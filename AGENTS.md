@@ -14,8 +14,9 @@ Instructions for agents (and people) changing this library. Users of the library
 | `src/composites.ts`         | `sum`, `dot`, `logsumexp`, `softmax`, generic over any `Arithmetic`                       |
 | `src/convenience.ts`        | `evaluate`, `gradient`, `jvp`                                                             |
 | `src/check.ts`              | `finiteDifference`, `checkGradient`                                                       |
+| `src/capacity.ts`           | the `capacity` option check shared by `Tape` and `Forward`                                |
 | `src/index.ts`              | the public API: everything exported from the package root                                 |
-| `test/`                     | Vitest suites; `test/support/` holds helpers, including the doc-example extractor         |
+| `test/`                     | Vitest suites, helpers in `test/support/`; `invariants.test.ts` reads the source itself   |
 | `bench/`                    | tinybench workloads (`workloads.ts`), the runner and comparer (`run.ts`), `baseline.json` |
 | `examples/production-line/` | the worked example; run by `npm run example`, tested by `test/example.test.ts`            |
 | `docs/`, `llms.txt`         | user documentation, shipped in the package                                                |
@@ -140,7 +141,7 @@ CI.
 
 ## Commands
 
-```sh
+````sh
 npm ci                  # install
 npm run check           # every gate above
 npm test                # just the tests
@@ -151,3 +152,4 @@ npm run format          # apply Prettier
 npm run api:update      # rebuild and refresh etc/adjointly.api.md
 npx changeset           # record a user-visible change
 ```
+````
