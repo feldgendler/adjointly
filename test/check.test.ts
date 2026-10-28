@@ -78,7 +78,7 @@ describe('checkGradient', () => {
     expect(r.worst.analytic).toBe(3);
     expect(r.worst.numeric).toBeCloseTo(6, 6);
     expect(r.worst.error).toBeCloseTo(3, 6);
-    expect(r.worst.allowed).toBeCloseTo(1e-8 + 1e-5 * 6, 9);
+    expect(r.worst.allowed).toBe(1e-8 + 1e-5 * r.worst.numeric + r.worst.roundoff);
   });
 
   test('the worst component is the one furthest outside its allowance', () => {
@@ -106,12 +106,33 @@ describe('checkGradient', () => {
   });
 
   test('a component exactly at its allowance passes', () => {
-    // f = x + value(x): analytic 1, numeric exactly 2 (f is 2x, and the step is divided out
-    // exactly), so the error is exactly 1.
-    const f: ScalarFunction = (A, [x]) => A.add(x!, A.constant(A.value(x!)));
-    expect(checkGradient(f, [0.75]).numeric).toEqual([2]);
+    // f = x - value(x): analytic 1, but f is 0 everywhere, so the numeric derivative and its
+    // rounding allowance are exactly 0 and the error is exactly 1.
+    const f: ScalarFunction = (A, [x]) => A.sub(x!, A.constant(A.value(x!)));
+    expect(checkGradient(f, [0.75]).numeric).toEqual([0]);
+    expect(checkGradient(f, [0.75]).worst.roundoff).toBe(0);
     expect(checkGradient(f, [0.75], { rtol: 0, atol: 1 }).ok).toBe(true);
     expect(checkGradient(f, [0.75], { rtol: 0, atol: 0.999 }).ok).toBe(false);
+  });
+
+  test('an exact gradient passes when f is large, despite rounding in the differences', () => {
+    const f: ScalarFunction = (A, [x, y]) =>
+      A.add(A.add(A.constant(1e5), A.mul(A.constant(1e-3), x!)), A.sin(y!));
+    const r = checkGradient(f, [0.7, 0.3]);
+    expect(r.ok).toBe(true);
+    expect(r.worst.roundoff).toBeGreaterThan(r.worst.error);
+    // ...and a wrong one still fails there.
+    const wrong: ScalarFunction = (A, [x]) =>
+      A.add(A.constant(1e5), A.mul(x!, A.constant(A.value(x!))));
+    expect(checkGradient(wrong, [1]).ok).toBe(false);
+  });
+
+  test('the rounding allowance is about eps |f| / step', () => {
+    const f: ScalarFunction = (A, [x]) => A.add(A.constant(1e5), x!);
+    const r = checkGradient(f, [0]);
+    const step = 2 * DEFAULT_STEP;
+    expect(r.worst.roundoff).toBeCloseTo((4 * Number.EPSILON * 2e5) / step, 12);
+    expect(r.worst.allowed).toBe(1e-8 + 1e-5 * Math.max(1, r.numeric[0]!) + r.worst.roundoff);
   });
 
   test('tolerances are honoured', () => {
@@ -149,7 +170,7 @@ describe('checkGradient', () => {
       value: 1,
       analytic: [],
       numeric: [],
-      worst: { index: -1, analytic: NaN, numeric: NaN, error: 0, allowed: 0 },
+      worst: { index: -1, analytic: NaN, numeric: NaN, error: 0, allowed: 0, roundoff: 0 },
     });
   });
 });

@@ -124,6 +124,7 @@ export interface GradientCheck {
         readonly numeric: number;
         readonly error: number;
         readonly allowed: number;
+        readonly roundoff: number;
     };
 }
 

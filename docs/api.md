@@ -105,13 +105,14 @@ neither is a `Dual`. `Mark` is a branded tape length.
 
 ## Checking: `finiteDifference`, `checkGradient`, `DEFAULT_STEP`
 
-| function                                                | contract                                                                                                                                                     |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `finiteDifference(f, at, h = DEFAULT_STEP)`             | central differences with step `h * max(1, abs(at[i]))`; two evaluations per input                                                                            |
-| `checkGradient(f, at, { h, rtol = 1e-5, atol = 1e-8 })` | reverse mode against central differences; component `i` passes when `abs(analytic - numeric) <= atol + rtol * max(abs(analytic), abs(numeric))`; `NaN` fails |
+| function                                                | contract                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `finiteDifference(f, at, h = DEFAULT_STEP)`             | central differences with step `h * max(1, abs(at[i]))`; two evaluations per input                                                                                                                                                                                                            |
+| `checkGradient(f, at, { h, rtol = 1e-5, atol = 1e-8 })` | reverse mode against central differences; component `i` passes when `abs(analytic - numeric) <= atol + rtol * max(abs(analytic), abs(numeric)) + roundoff`, where `roundoff` is `4 * eps * (abs(f(x + h)) + abs(f(x - h))) / (2 h)`, the finite difference's own rounding error; `NaN` fails |
 
 `checkGradient` returns `{ ok, value, analytic, numeric, worst }`, where `worst` is the component
-furthest outside its allowance, with `index`, `analytic`, `numeric`, `error` and `allowed`.
+furthest outside its allowance, with `index`, `analytic`, `numeric`, `error`, `roundoff` and
+`allowed`.
 
 ```ts
 import { checkGradient, type ScalarFunction } from 'adjointly';

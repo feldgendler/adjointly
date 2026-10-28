@@ -124,7 +124,7 @@ min, max, sin, cos, tanh, sigmoid, softplus`.
 
 - `finiteDifference(f, at, h = DEFAULT_STEP): number[]`
 - `checkGradient(f, at, { h?, rtol?, atol? })` returns
-  `{ ok, value, analytic, numeric, worst: { index, analytic, numeric, error, allowed } }`
+  `{ ok, value, analytic, numeric, worst: { index, analytic, numeric, error, allowed, roundoff } }`
 
 **The primitive table**
 
