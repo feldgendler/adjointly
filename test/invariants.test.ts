@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
+import { constantOperandOps } from '../src/arithmetic.ts';
 import { binaryNames, primitives, unaryNames } from '../src/index.ts';
 
 const root = join(import.meta.dirname, '..');
@@ -68,7 +69,7 @@ describe('Tape and Forward', () => {
       // TypeScript shows `{@inheritDoc}` literally in editor hovers, so the text is copied, and
       // kept identical here.
       const docs = memberDocs(`src/${cls === 'Tape' ? 'tape' : 'forward'}.ts`, cls);
-      expect(contract.size).toBe(names.length + 2);
+      expect(contract.size).toBe(names.length + 2 + Object.keys(constantOperandOps).length);
       for (const [name, doc] of contract) {
         expect(doc, `Arithmetic.${name}`).toBeDefined();
         expect(docs.get(name), `${cls}.${name}`).toBe(doc);
@@ -85,6 +86,13 @@ describe('Tape and Forward', () => {
         expect(body, `${cls}.${name}`).toBeDefined();
         const entries = new Set([...body!.matchAll(/\bP\.(\w+)\./g)].map((m) => m[1]));
         expect([...entries], `${cls}.${name} reads the table`).toEqual([name]);
+        expect(body, `${cls}.${name} must not compute a formula itself`).not.toMatch(/\bMath\./);
+      }
+      for (const [name, { of }] of Object.entries(constantOperandOps)) {
+        const body = bodies.get(name);
+        expect(body, `${cls}.${name}`).toBeDefined();
+        const entries = new Set([...body!.matchAll(/\bP\.(\w+)\./g)].map((m) => m[1]));
+        expect([...entries], `${cls}.${name} reads the table`).toEqual([of]);
         expect(body, `${cls}.${name} must not compute a formula itself`).not.toMatch(/\bMath\./);
       }
     },
@@ -130,3 +138,11 @@ describe('the docs list exactly the primitives in the table', () => {
     expect(words(binary![1]!)).toEqual([...binaryNames].sort());
   });
 });
+
+test.each(['README.md', 'docs/api.md', 'llms.txt'])(
+  '%s names every operation with a plain-number operand',
+  (path) => {
+    const text = read(path);
+    for (const name of Object.keys(constantOperandOps)) expect(text, name).toContain(`${name}(`);
+  },
+);

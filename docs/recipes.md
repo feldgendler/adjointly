@@ -14,7 +14,7 @@ const ys = [1, 3, 5];
 function loss<T>(A: Arithmetic<T>, a: T, b: T): T {
   let s = A.constant(0);
   for (let i = 0; i < xs.length; i++) {
-    const r = A.sub(A.add(A.mul(a, A.constant(xs[i]!)), b), A.constant(ys[i]!));
+    const r = A.subc(A.add(A.mulc(a, xs[i]!), b), ys[i]!);
     s = A.add(s, A.square(r));
   }
   return s;
@@ -52,7 +52,7 @@ let total = 0;
 for (const x of [1, 2, 3]) {
   t.rewind(m);
   // d/dw of w^2 * x = 2 w x
-  t.backward(t.mul(w2, t.constant(x)));
+  t.backward(t.mulc(w2, x));
   total += t.adjoint(w);
 }
 total; //=> 2 * 2 * (1 + 2 + 3)
@@ -119,7 +119,7 @@ function negLogLikelihood<T>(A: Arithmetic<T>, [raw]: readonly [T]): T {
   const waits = [0.5, 1.5, 1.0];
   // exponential distribution: -sum(log(rate) - rate * w)
   let s = A.constant(0);
-  for (const w of waits) s = A.sub(s, A.sub(A.log(rate), A.mul(rate, A.constant(w))));
+  for (const w of waits) s = A.sub(s, A.sub(A.log(rate), A.mulc(rate, w)));
   return s;
 }
 // At the optimum rate = 1 / mean(waits) = 1, i.e. raw = log(e - 1), the gradient vanishes.

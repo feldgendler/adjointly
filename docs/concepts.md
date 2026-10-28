@@ -88,7 +88,7 @@ import { type Arithmetic, gradient } from 'adjointly';
 function newtonSqrt<T>(A: Arithmetic<T>, [a]: readonly [T]): T {
   let x = A.constant(1);
   for (;;) {
-    const next = A.mul(A.constant(0.5), A.add(x, A.div(a, x)));
+    const next = A.mulc(A.add(x, A.div(a, x)), 0.5);
     if (Math.abs(A.value(next) - A.value(x)) < 1e-15) return next;
     x = next;
   }
@@ -113,7 +113,7 @@ import { type Arithmetic, gradient, jvp } from 'adjointly';
 
 // sqrt at 0 has an infinite derivative, but here it is multiplied by 0.
 function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
-  return A.add(A.mul(A.constant(0), A.sqrt(x)), y);
+  return A.add(A.mulc(A.sqrt(x), 0), y);
 }
 gradient(f, [0, 1]).gradient; //=> [0, 1]
 jvp(f, [0, 1], [1, 0]).derivative; //=> 0
@@ -121,7 +121,7 @@ jvp(f, [0, 1], [0, 1]).derivative; //=> 1
 
 // The zero comes before the singular point: 0 * x is 0 for every x, so sqrt(0 * x) is constant.
 function g<T>(A: Arithmetic<T>, [x]: readonly [T]): T {
-  return A.sqrt(A.mul(A.constant(0), x));
+  return A.sqrt(A.mulc(x, 0));
 }
 gradient(g, [1]).gradient; //=> [0]
 jvp(g, [1], [1]).derivative; //=> 0

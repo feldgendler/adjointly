@@ -47,7 +47,8 @@ under `noUncheckedIndexedAccess`; a point written as a literal (`[1, 0]`) is che
 **The arithmetic interface.** A differentiable function takes an `Arithmetic<T>` (here `A`) and
 values of an opaque type `T`, and does every operation through `A`: `A.add(x, y)`, `A.exp(x)`.
 `T` is `number` when the function is evaluated plainly, and an index into storage when it is being
-differentiated. Numbers enter through `A.constant(c)`; values leave through `A.value(x)`.
+differentiated. Numbers enter through `A.constant(c)`, or as the plain-number operand of `addc`,
+`mulc` and the like; values leave through `A.value(x)`.
 
 **The tape (reverse mode).** A `Tape` records each operation as a node: its value, the one or two
 nodes it was computed from, and the _local partial derivatives_ with respect to them, computed on
@@ -81,7 +82,7 @@ The tape records the operations that actually ran, so the derivative is that of 
 import { type Arithmetic, gradient } from 'adjointly';
 
 function hinge<T>(A: Arithmetic<T>, [x]: readonly [T]): T {
-  return A.value(x) > 1 ? A.constant(0) : A.sub(A.constant(1), x);
+  return A.value(x) > 1 ? A.constant(0) : A.csub(1, x);
 }
 gradient(hinge, [0.5]).gradient; //=> [-1]
 gradient(hinge, [2]).gradient; //=> [0]
@@ -103,7 +104,9 @@ Every export is documented in its TSDoc, with an example that is run as a test. 
 
 - `interface Arithmetic<T>`: `constant(x: number): T`, `value(a: T): number`, and one method per
   primitive: `neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs,
-min, max, sin, cos, tanh, sigmoid, softplus`.
+min, max, sin, cos, tanh, sigmoid, softplus`; and, for a plain-number operand `c`,
+  `addc(a, c), subc(a, c), csub(c, a), mulc(a, c), divc(a, c), cdiv(c, a), powc(a, c)`: the
+  binary primitive with a constant, in one tape node instead of two.
 - `type ScalarFunction<X = readonly number[]> = <T>(A: Arithmetic<T>, xs: Inputs<T, X>) => T`:
   what the conveniences take. `Inputs<T, X>` is one `T` per number of the point `X`: a tuple for a
   literal point such as `[1, 0]`, `readonly T[]` for a `number[]`.
@@ -159,10 +162,7 @@ for (let step = 0; step < 200; step++) {
   tape.clear();
   const [a, b] = tape.inputs(w);
   // loss = (a - 3)^2 + (b + 1)^2
-  const loss = tape.add(
-    tape.square(tape.sub(a, tape.constant(3))),
-    tape.square(tape.add(b, tape.constant(1))),
-  );
+  const loss = tape.add(tape.square(tape.subc(a, 3)), tape.square(tape.addc(b, 1)));
   tape.gradient(loss, [a, b], out);
   w = [w[0] - 0.1 * out[0]!, w[1] - 0.1 * out[1]!];
 }
@@ -260,8 +260,10 @@ one is absolute.
 2. **Write the function generic in `T`**, as `function f<T>(A: Arithmetic<T>, xs: readonly T[]): T`,
    and run it with `plain`, a `Tape` or a `Forward`. Do not write a separate plain version; the
    generic one evaluated with `plain` gives bit-for-bit the same value.
-3. **Numbers go in through `A.constant(c)`.** Data, hyperparameters, literals: all constants. Their
-   derivative is zero.
+3. **Numbers go in through `A.constant(c)`, or as the number operand of `addc`, `subc`, `csub`,
+   `mulc`, `divc`, `cdiv`, `powc`.** Data, hyperparameters, literals: all constants, with derivative
+   zero. Prefer the number-operand operations: `A.mulc(x, 2)` is one tape node,
+   `A.mul(x, A.constant(2))` two, with the same value and derivative.
 4. **Numbers come out through `A.value(x)`, and they are constants from then on.**
    `A.constant(A.value(x))` cuts the derivative: `A.mul(x, A.constant(A.value(x)))` has derivative
    `x`, not `2x`. Use `A.value` only to branch, to log, or to return a result.
@@ -288,6 +290,15 @@ one is absolute.
 More: [docs/pitfalls.md](docs/pitfalls.md), and [llms.txt](llms.txt) for a compact summary.
 
 ## Design notes
+
+- **Plain-number operands: `addc`, `subc`, `csub`, `mulc`, `divc`, `cdiv`, `powc`.** In real code
+  most operands of a recurrence are fixed parameters and data, and spelling each with
+  `constant()` doubles the tape. The `c` marks the side the constant is on, and the arguments are
+  in the order of the expression: `subc(a, c)` is `a - c`, `csub(c, a)` is `c - a`. Short names
+  rather than `scale` or `shift`, because subtraction and division need both orders and a power
+  needs one, and a uniform suffix covers them all. Each is the binary primitive with one operand
+  fixed, computed from that primitive's table entry, so its value and derivative are bit for bit
+  those of the constant spelling. There is no `minc`/`maxc`: use `max(x, constant(c))`.
 
 - **One function, three arithmetics.** The alternatives, operator overloading through wrapper
   objects or a separate tracing API, either allocate an object per operation or make users keep

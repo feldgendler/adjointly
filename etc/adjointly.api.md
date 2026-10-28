@@ -8,9 +8,13 @@
 export interface Arithmetic<T> {
     abs(a: T): T;
     add(a: T, b: T): T;
+    addc(a: T, c: number): T;
+    cdiv(c: number, a: T): T;
     constant(x: number): T;
     cos(a: T): T;
+    csub(c: number, a: T): T;
     div(a: T, b: T): T;
+    divc(a: T, c: number): T;
     exp(a: T): T;
     expm1(a: T): T;
     log(a: T): T;
@@ -18,8 +22,10 @@ export interface Arithmetic<T> {
     max(a: T, b: T): T;
     min(a: T, b: T): T;
     mul(a: T, b: T): T;
+    mulc(a: T, c: number): T;
     neg(a: T): T;
     pow(a: T, b: T): T;
+    powc(a: T, c: number): T;
     recip(a: T): T;
     sigmoid(a: T): T;
     sin(a: T): T;
@@ -27,6 +33,7 @@ export interface Arithmetic<T> {
     sqrt(a: T): T;
     square(a: T): T;
     sub(a: T, b: T): T;
+    subc(a: T, c: number): T;
     tanh(a: T): T;
     value(a: T): number;
 }
@@ -77,10 +84,14 @@ export class Forward implements Arithmetic<Dual> {
     constructor(options?: ForwardOptions);
     abs(a: Dual): Dual;
     add(a: Dual, b: Dual): Dual;
+    addc(a: Dual, c: number): Dual;
+    cdiv(c: number, a: Dual): Dual;
     clear(): void;
     constant(x: number): Dual;
     cos(a: Dual): Dual;
+    csub(c: number, a: Dual): Dual;
     div(a: Dual, b: Dual): Dual;
+    divc(a: Dual, c: number): Dual;
     exp(a: Dual): Dual;
     expm1(a: Dual): Dual;
     input(x: number, tangent: number): Dual;
@@ -89,8 +100,10 @@ export class Forward implements Arithmetic<Dual> {
     max(a: Dual, b: Dual): Dual;
     min(a: Dual, b: Dual): Dual;
     mul(a: Dual, b: Dual): Dual;
+    mulc(a: Dual, c: number): Dual;
     neg(a: Dual): Dual;
     pow(a: Dual, b: Dual): Dual;
+    powc(a: Dual, c: number): Dual;
     recip(a: Dual): Dual;
     sigmoid(a: Dual): Dual;
     sin(a: Dual): Dual;
@@ -99,6 +112,7 @@ export class Forward implements Arithmetic<Dual> {
     sqrt(a: Dual): Dual;
     square(a: Dual): Dual;
     sub(a: Dual, b: Dual): Dual;
+    subc(a: Dual, c: number): Dual;
     tangent(a: Dual): number;
     tanh(a: Dual): Dual;
     value(a: Dual): number;
@@ -196,14 +210,18 @@ export class Tape implements Arithmetic<Var> {
     constructor(options?: TapeOptions);
     abs(a: Var): Var;
     add(a: Var, b: Var): Var;
+    addc(a: Var, c: number): Var;
     adjoint(v: Var): number;
     adjoints(vars: readonly Var[], out?: Float64Array): Float64Array;
     backward(output: Var, seed?: number): void;
     get capacity(): number;
+    cdiv(c: number, a: Var): Var;
     clear(): void;
     constant(x: number): Var;
     cos(a: Var): Var;
+    csub(c: number, a: Var): Var;
     div(a: Var, b: Var): Var;
+    divc(a: Var, c: number): Var;
     exp(a: Var): Var;
     expm1(a: Var): Var;
     gradient(output: Var, inputs: readonly Var[], out?: Float64Array): Float64Array;
@@ -217,8 +235,10 @@ export class Tape implements Arithmetic<Var> {
     max(a: Var, b: Var): Var;
     min(a: Var, b: Var): Var;
     mul(a: Var, b: Var): Var;
+    mulc(a: Var, c: number): Var;
     neg(a: Var): Var;
     pow(a: Var, b: Var): Var;
+    powc(a: Var, c: number): Var;
     recip(a: Var): Var;
     rewind(mark: Mark): void;
     sigmoid(a: Var): Var;
@@ -228,6 +248,7 @@ export class Tape implements Arithmetic<Var> {
     sqrt(a: Var): Var;
     square(a: Var): Var;
     sub(a: Var, b: Var): Var;
+    subc(a: Var, c: number): Var;
     tanh(a: Var): Var;
     value(a: Var): number;
     vjp(outputs: readonly Var[], weights: ArrayLike<number>): void;

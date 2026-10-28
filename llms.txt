@@ -6,7 +6,7 @@ Rules for code that this library differentiates:
 
 - Write the function generic in `T`: `function f<T>(A: Arithmetic<T>, xs: readonly T[]): T`.
 - Every operation on a differentiable value goes through `A`: `A.add`, `A.mul`, `A.exp`, never `+`, `*` or `Math.*`. `Var`/`Dual` are numbers at run time, so the mistake type-checks and is silent.
-- Numbers enter through `A.constant(c)` and leave through `A.value(x)`. A number taken out with `A.value` and fed back with `A.constant` carries no derivative.
+- Numbers enter through `A.constant(c)`, or better as the number operand of `addc`/`subc`/`csub`/`mulc`/`divc`/`cdiv`/`powc` (one tape node instead of two), and leave through `A.value(x)`. A number taken out with `A.value` and fed back with `A.constant` carries no derivative.
 - Branching on `A.value(x)` is fine; the derivative is that of the branch taken.
 - Use the stable primitives `sigmoid`, `softplus`, `log1p`, `expm1`, `square`, and the composites `logsumexp`, `softmax`.
 - In loops, reuse one `Tape`: `clear()` (or `rewind(mark)`) per evaluation, and pass an output buffer to `tape.gradient`.
@@ -23,7 +23,7 @@ jvp(f, [1, 2], [0, 1]); //=> { value: 2 + log(1 + E), derivative: 1 }
 checkGradient(f, [1, 2]).ok; //=> true
 ```
 
-Primitives (all on `Arithmetic`): neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs, min, max, sin, cos, tanh, sigmoid, softplus. Subgradients: abs'(0) = 0; max/min ties go to the first argument; pow's exponent derivative is 0 for a base <= 0, its base derivative 0 for exponent 0; sqrt'(0) = sqrt'(-0) = Infinity; max/min with a NaN argument have NaN partials. Zero rule: a chain-rule term with an exactly zero partial, adjoint or tangent is 0, even against Infinity or NaN.
+Primitives (all on `Arithmetic`): neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs, min, max, sin, cos, tanh, sigmoid, softplus. With a plain-number operand c, in one tape node instead of constant(c) plus the operation: addc(a, c), subc(a, c), csub(c, a), mulc(a, c), divc(a, c), cdiv(c, a), powc(a, c). Subgradients: abs'(0) = 0; max/min ties go to the first argument; pow's exponent derivative is 0 for a base <= 0, its base derivative 0 for exponent 0; sqrt'(0) = sqrt'(-0) = Infinity; max/min with a NaN argument have NaN partials. Zero rule: a chain-rule term with an exactly zero partial, adjoint or tangent is 0, even against Infinity or NaN.
 
 ## Docs
 

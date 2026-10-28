@@ -27,7 +27,7 @@ import { primitives as P } from './primitives.ts';
  *
  * // f(x, y) = x * e^y + 3
  * function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
- *   return A.add(A.mul(x, A.exp(y)), A.constant(3));
+ *   return A.addc(A.mul(x, A.exp(y)), 3);
  * }
  * f(plain, [2, 0]);   //=> 5
  * gradient(f, [2, 0]); //=> { value: 5, gradient: [1, 2] }
@@ -73,8 +73,8 @@ export interface Arithmetic<T> {
   /**
    * `a ** b`, differentiable in both arguments. The derivative with respect to `b` is `0` wherever
    * `a <= 0`; the derivative with respect to `a` is `0` wherever `b === 0`. For a fixed numeric
-   * exponent pass `A.constant(b)`; for `b = 2` prefer {@link Arithmetic.square}, for `b = 0.5`
-   * prefer {@link Arithmetic.sqrt}.
+   * exponent use {@link Arithmetic.powc}; for `b = 2` prefer {@link Arithmetic.square}, for
+   * `b = 0.5` prefer {@link Arithmetic.sqrt}.
    */
   pow(a: T, b: T): T;
   /** `|a|`; its derivative at `0` is `0`. */
@@ -93,7 +93,46 @@ export interface Arithmetic<T> {
   sigmoid(a: T): T;
   /** Softplus `log(1 + e^a)`, stable for any `a`; its derivative is `sigmoid(a)`. */
   softplus(a: T): T;
+
+  /**
+   * `a + c` for a plain number `c`: `add(a, constant(c))` without the constant's tape node. Same
+   * value and derivative, bit for bit.
+   */
+  addc(a: T, c: number): T;
+  /** `a - c` for a plain number `c`; `sub(a, constant(c))` in one node. */
+  subc(a: T, c: number): T;
+  /** `c - a` for a plain number `c`; `sub(constant(c), a)` in one node. */
+  csub(c: number, a: T): T;
+  /** `a * c` for a plain number `c`; `mul(a, constant(c))` in one node. */
+  mulc(a: T, c: number): T;
+  /** `a / c` for a plain number `c`; `div(a, constant(c))` in one node. */
+  divc(a: T, c: number): T;
+  /** `c / a` for a plain number `c`; `div(constant(c), a)` in one node. */
+  cdiv(c: number, a: T): T;
+  /**
+   * `a ** c` for a plain number `c`; `pow(a, constant(c))` in one node, with the same conventions
+   * (the derivative is `0` when `c === 0`).
+   */
+  powc(a: T, c: number): T;
 }
+
+/**
+ * The operations with a plain-number operand, each the binary primitive `of` with one operand a
+ * constant: the first one when `constantFirst`, otherwise the second. Their values and partials
+ * are that primitive's, from the table.
+ */
+export const constantOperandOps = {
+  addc: { of: 'add', constantFirst: false },
+  subc: { of: 'sub', constantFirst: false },
+  csub: { of: 'sub', constantFirst: true },
+  mulc: { of: 'mul', constantFirst: false },
+  divc: { of: 'div', constantFirst: false },
+  cdiv: { of: 'div', constantFirst: true },
+  powc: { of: 'pow', constantFirst: false },
+} as const;
+
+/** The names of the operations with a plain-number operand. */
+export type ConstantOperandName = keyof typeof constantOperandOps;
 
 /**
  * The inputs of a {@link ScalarFunction}: one `T` for each number in the point `X`. For a point
@@ -112,8 +151,8 @@ export type Inputs<T, X extends readonly number[]> = { readonly [K in keyof X]: 
  * ```ts
  * const rosenbrock: ScalarFunction<[number, number]> = (A, [x, y]) =>
  *   A.add(
- *     A.square(A.sub(A.constant(1), x)),
- *     A.mul(A.constant(100), A.square(A.sub(y, A.square(x)))),
+ *     A.square(A.csub(1, x)),
+ *     A.mulc(A.square(A.sub(y, A.square(x))), 100),
  *   );
  * evaluate(rosenbrock, [1, 1]); //=> 0
  * gradient(rosenbrock, [0, 0]).gradient; //=> [-2, 0]
@@ -158,4 +197,12 @@ export const plain: Arithmetic<number> = {
   tanh: P.tanh.value,
   sigmoid: P.sigmoid.value,
   softplus: P.softplus.value,
+  // The constant-operand operations take their arguments in the same order as the primitive.
+  addc: P.add.value,
+  subc: P.sub.value,
+  csub: P.sub.value,
+  mulc: P.mul.value,
+  divc: P.div.value,
+  cdiv: P.div.value,
+  powc: P.pow.value,
 };

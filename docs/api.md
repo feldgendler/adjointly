@@ -8,14 +8,31 @@ authoritative contract; this page groups them by topic. The committed API report
 
 ### `interface Arithmetic<T>`
 
-| member                                                                                                 | contract                                                          |
-| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `constant(x: number): T`                                                                               | a number as a constant: zero derivative. Appends a node on a tape |
-| `value(a: T): number`                                                                                  | the current value; a plain number with no derivative attached     |
-| `neg, recip, square, sqrt, exp, expm1, log, log1p, abs, sin, cos, tanh, sigmoid, softplus` `(a: T): T` | one-argument primitives                                           |
-| `add, sub, mul, div, pow, min, max` `(a: T, b: T): T`                                                  | two-argument primitives                                           |
+| member                                                                                                 | contract                                                           |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `constant(x: number): T`                                                                               | a number as a constant: zero derivative. Appends a node on a tape  |
+| `value(a: T): number`                                                                                  | the current value; a plain number with no derivative attached      |
+| `neg, recip, square, sqrt, exp, expm1, log, log1p, abs, sin, cos, tanh, sigmoid, softplus` `(a: T): T` | one-argument primitives                                            |
+| `addc, subc, mulc, divc, powc` `(a: T, c: number): T`; `csub, cdiv` `(c: number, a: T): T`             | the binary primitive with a plain-number operand, in one tape node |
+| `add, sub, mul, div, pow, min, max` `(a: T, b: T): T`                                                  | two-argument primitives                                            |
 
-Every operation on a `T` must go through these methods.
+Every operation on a `T` must go through these methods. The ones with a plain-number operand are
+the binary primitive with that operand a constant, in one tape node instead of two, and with the
+same value and derivative, bit for bit:
+
+```ts
+import { plain, Tape } from 'adjointly';
+
+[plain.addc(5, 2), plain.subc(5, 2), plain.csub(2, 5), plain.mulc(5, 2)]; //=> [7, 3, -3, 10]
+[plain.divc(5, 2), plain.cdiv(2, 5), plain.powc(5, 2)]; //=> [2.5, 0.4, 25]
+
+const t = new Tape();
+const x = t.input(3);
+const y = t.mulc(x, 2); // one node; t.mul(x, t.constant(2)) would record two
+t.size; //=> 2
+t.backward(y);
+t.adjoint(x); //=> 2
+```
 
 ### `type ScalarFunction<X = readonly number[]> = <T>(A: Arithmetic<T>, xs: Inputs<T, X>) => T`
 

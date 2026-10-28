@@ -121,12 +121,12 @@ export class Tape implements Arithmetic<Var> {
    * let grad = 0;
    * for (const x of [1, 2, 3]) {
    *   t.rewind(m); // drop the previous sample's nodes, keep w
-   *   const loss = t.square(t.sub(t.mul(w, t.constant(x)), t.constant(1)));
+   *   const loss = t.square(t.subc(t.mulc(w, x), 1));
    *   t.backward(loss);
    *   grad += t.adjoint(w);
    * }
    * grad; //=> 2 * ((0.5 - 1) * 1 + (1 - 1) * 2 + (1.5 - 1) * 3)
-   * t.size; //=> 6
+   * t.size; //=> 4
    * ```
    */
   mark(): Mark {
@@ -429,8 +429,8 @@ export class Tape implements Arithmetic<Var> {
   /**
    * `a ** b`, differentiable in both arguments. The derivative with respect to `b` is `0` wherever
    * `a <= 0`; the derivative with respect to `a` is `0` wherever `b === 0`. For a fixed numeric
-   * exponent pass `A.constant(b)`; for `b = 2` prefer {@link Arithmetic.square}, for `b = 0.5`
-   * prefer {@link Arithmetic.sqrt}.
+   * exponent use {@link Arithmetic.powc}; for `b = 2` prefer {@link Arithmetic.square}, for
+   * `b = 0.5` prefer {@link Arithmetic.sqrt}.
    */
   pow(a: Var, b: Var): Var {
     const x = this.val[a]!;
@@ -487,5 +487,63 @@ export class Tape implements Arithmetic<Var> {
     const x = this.val[a]!;
     const y = P.softplus.value(x);
     return this.push(y, a, P.softplus.deriv(x, y), SINK, 0);
+  }
+
+  // The constant-operand operations: the binary primitive with one operand a plain number, one
+  // node with one parent.
+
+  /**
+   * `a + c` for a plain number `c`: `add(a, constant(c))` without the constant's tape node. Same
+   * value and derivative, bit for bit.
+   */
+  addc(a: Var, c: number): Var {
+    const x = this.val[a]!;
+    const y = P.add.value(x, c);
+    return this.push(y, a, P.add.da(x, c, y), SINK, 0);
+  }
+
+  /** `a - c` for a plain number `c`; `sub(a, constant(c))` in one node. */
+  subc(a: Var, c: number): Var {
+    const x = this.val[a]!;
+    const y = P.sub.value(x, c);
+    return this.push(y, a, P.sub.da(x, c, y), SINK, 0);
+  }
+
+  /** `c - a` for a plain number `c`; `sub(constant(c), a)` in one node. */
+  csub(c: number, a: Var): Var {
+    const x = this.val[a]!;
+    const y = P.sub.value(c, x);
+    return this.push(y, a, P.sub.db(c, x, y), SINK, 0);
+  }
+
+  /** `a * c` for a plain number `c`; `mul(a, constant(c))` in one node. */
+  mulc(a: Var, c: number): Var {
+    const x = this.val[a]!;
+    const y = P.mul.value(x, c);
+    return this.push(y, a, P.mul.da(x, c, y), SINK, 0);
+  }
+
+  /** `a / c` for a plain number `c`; `div(a, constant(c))` in one node. */
+  divc(a: Var, c: number): Var {
+    const x = this.val[a]!;
+    const y = P.div.value(x, c);
+    return this.push(y, a, P.div.da(x, c, y), SINK, 0);
+  }
+
+  /** `c / a` for a plain number `c`; `div(constant(c), a)` in one node. */
+  cdiv(c: number, a: Var): Var {
+    const x = this.val[a]!;
+    const y = P.div.value(c, x);
+    return this.push(y, a, P.div.db(c, x, y), SINK, 0);
+  }
+
+  /**
+   * `a ** c` for a plain number `c`; `pow(a, constant(c))` in one node, with the same conventions
+   * (the derivative is `0` when `c === 0`).
+   */
+  powc(a: Var, c: number): Var {
+    const x = this.val[a]!;
+    const y = P.pow.value(x, c);
+    return this.push(y, a, P.pow.da(x, c, y), SINK, 0);
   }
 }
