@@ -25,6 +25,16 @@ describe('construction and growth', () => {
     expectClose(t.adjoint(x), 1001 * Math.pow(1.0001, 1000), 1e-12);
   });
 
+  test('adjoints from a sweep survive recording that grows the tape', () => {
+    const t = new Tape({ capacity: 4 });
+    const x = t.input(3);
+    t.backward(t.square(x));
+    expect(t.adjoint(x)).toBe(6);
+    for (let i = 0; i < 10; i++) t.constant(i); // grows the tape twice
+    expect(t.capacity).toBeGreaterThan(4);
+    expect(t.adjoint(x)).toBe(6);
+  });
+
   test('a backward sweep after growth sees the old nodes and the new ones', () => {
     const t = new Tape({ capacity: 2 });
     const a = t.input(3);

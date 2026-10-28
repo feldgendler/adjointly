@@ -315,7 +315,9 @@ export class Tape implements Arithmetic<Var> {
     const db = new Float64Array(cap);
     db.set(this.db);
     this.db = db;
-    this.adj = new Float64Array(cap);
+    const adj = new Float64Array(cap);
+    adj.set(this.adj); // adjoints of the last sweep stay readable while recording continues
+    this.adj = adj;
   }
 
   // One method per primitive, each calling its own table entry directly. A shared helper taking
