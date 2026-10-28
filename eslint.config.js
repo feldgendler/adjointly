@@ -4,7 +4,7 @@ import tsdoc from 'eslint-plugin-tsdoc';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'reports/', 'temp/', '.stryker-tmp/'] },
+  { ignores: ['dist/', 'coverage/', 'reports/', 'temp/', '.stryker-tmp/', '.bench-base/'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,

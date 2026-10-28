@@ -317,5 +317,6 @@ More: [docs/pitfalls.md](docs/pitfalls.md), and [llms.txt](llms.txt) for a compa
 
 See [AGENTS.md](AGENTS.md) for the layout, the invariants and the gates. In short: `npm run check`
 runs formatting, lint, type checking, tests with a 100% coverage gate, the build, publint, attw and
-the API report check; `npm run mutate` runs mutation testing; `npm run bench` times the workloads.
+the API report check; `npm run mutate` runs mutation testing; `npm run bench` times the workloads,
+and `npm run bench:ab` compares them with another checkout, as CI does for every pull request.
 Changes that affect users get a changeset (`npx changeset`).

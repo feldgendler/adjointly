@@ -57,16 +57,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0 # the base commit is needed too
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 26
           cache: npm
       - run: npm ci
-      # Compares each mode's cost relative to plain evaluation with bench/baseline.json, failing
-      # above BENCH_FAIL times the baseline. The baseline was recorded on darwin-arm64, not on this
-      # runner, so only the hard limit applies here (BENCH_WARN = BENCH_FAIL) until a baseline is
-      # recorded on the runner; see AGENTS.md.
-      - run: npm run bench:compare
+      # Head against base on this one runner, in alternating rounds (bench/ab.ts). The base is the
+      # pull request's base commit, or, on a push to main, the commit main was at before the push.
+      # A new branch has no "before" (all zeros); there is nothing to compare, so the job skips.
+      - name: Choose the base commit
+        id: base
         env:
-          BENCH_WARN: '1.4'
-          BENCH_FAIL: '1.4'
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base="${PR_BASE:-$BEFORE}"
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "No base commit to compare with; skipping."
+          else
+            echo "sha=$base" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.base.outputs.sha
+        run: git worktree add "$RUNNER_TEMP/base" "${{ steps.base.outputs.sha }}"
+      - if: steps.base.outputs.sha
+        run: npm run bench:ab -- --base "$RUNNER_TEMP/base" --rounds 5
+        env:
+          BENCH_WARN: '1.10'
+          BENCH_FAIL: '1.25'

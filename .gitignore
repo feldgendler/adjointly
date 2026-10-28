@@ -5,3 +5,4 @@ reports/
 temp/
 .stryker-tmp/
 *.tgz
+.bench-base/

@@ -5,23 +5,23 @@ Instructions for agents (and people) changing this library. Users of the library
 
 ## Layout
 
-| Path                        | What it is                                                                                |
-| --------------------------- | ----------------------------------------------------------------------------------------- |
-| `src/primitives.ts`         | **The** table of primitives: every value formula and every local partial derivative       |
-| `src/arithmetic.ts`         | `Arithmetic<T>`, `ScalarFunction`, and `plain` (the table's value functions)              |
-| `src/tape.ts`               | `Tape`, reverse mode: typed-array storage, recording, the backward sweep, mark/rewind     |
-| `src/forward.ts`            | `Forward`, forward mode: a value and a tangent per slot                                   |
-| `src/composites.ts`         | `sum`, `dot`, `logsumexp`, `softmax`, generic over any `Arithmetic`                       |
-| `src/convenience.ts`        | `evaluate`, `gradient`, `jvp`                                                             |
-| `src/check.ts`              | `finiteDifference`, `checkGradient`                                                       |
-| `src/capacity.ts`           | the `capacity` option check shared by `Tape` and `Forward`                                |
-| `src/index.ts`              | the public API: everything exported from the package root                                 |
-| `test/`                     | Vitest suites, helpers in `test/support/`; `invariants.test.ts` reads the source itself   |
-| `bench/`                    | tinybench workloads (`workloads.ts`), the runner and comparer (`run.ts`), `baseline.json` |
-| `examples/production-line/` | the worked example; run by `npm run example`, tested by `test/example.test.ts`            |
-| `docs/`, `llms.txt`         | user documentation, shipped in the package                                                |
-| `etc/adjointly.api.md`      | API Extractor's report of the public API, committed                                       |
-| `.changeset/`               | pending changesets                                                                        |
+| Path                        | What it is                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `src/primitives.ts`         | **The** table of primitives: every value formula and every local partial derivative                |
+| `src/arithmetic.ts`         | `Arithmetic<T>`, `ScalarFunction`, and `plain` (the table's value functions)                       |
+| `src/tape.ts`               | `Tape`, reverse mode: typed-array storage, recording, the backward sweep, mark/rewind              |
+| `src/forward.ts`            | `Forward`, forward mode: a value and a tangent per slot                                            |
+| `src/composites.ts`         | `sum`, `dot`, `logsumexp`, `softmax`, generic over any `Arithmetic`                                |
+| `src/convenience.ts`        | `evaluate`, `gradient`, `jvp`                                                                      |
+| `src/check.ts`              | `finiteDifference`, `checkGradient`                                                                |
+| `src/capacity.ts`           | the `capacity` option check shared by `Tape` and `Forward`                                         |
+| `src/index.ts`              | the public API: everything exported from the package root                                          |
+| `test/`                     | Vitest suites, helpers in `test/support/`; `invariants.test.ts` reads the source itself            |
+| `bench/`                    | tinybench workloads (`workloads.ts`), the measurement (`measure.ts`), the A/B comparison (`ab.ts`) |
+| `examples/production-line/` | the worked example; run by `npm run example`, tested by `test/example.test.ts`                     |
+| `docs/`, `llms.txt`         | user documentation, shipped in the package                                                         |
+| `etc/adjointly.api.md`      | API Extractor's report of the public API, committed                                                |
+| `.changeset/`               | pending changesets                                                                                 |
 
 ## Invariants
 
@@ -66,8 +66,8 @@ These are what the library promises; every change keeps them.
    `llms.txt`.
 6. `npm run api:update` to refresh `etc/adjointly.api.md`, and add a changeset (`npx changeset`,
    minor).
-7. `npm run check`, then `npm run mutate`, then `npm run bench` (and `bench:update` only if the
-   change is meant to move the numbers).
+7. `npm run check`, then `npm run mutate`, then `npm run bench:ab` against the commit before
+   (see below).
 
 ## The gates
 
@@ -90,16 +90,21 @@ Separately, and in CI:
   `stryker.config.json`. Slow (minutes). A surviving mutant is a behaviour no test pins down: add
   the test, or, if the mutant is truly equivalent, say why in a `// Stryker disable next-line`
   comment on that line.
-- `npm run bench:compare`: times the workloads and compares each mode's cost relative to plain
-  evaluation with `bench/baseline.json`; warns above `BENCH_WARN` (default 1.15) times the
-  baseline ratio, fails above `BENCH_FAIL` (default 1.4). Ratios rather than milliseconds, because
-  a CI runner and a laptop differ in speed by more than any regression worth catching. **To update
-  the baseline** after an intended performance change: `npm run bench:update` on a quiet machine,
-  check the printed numbers, commit `bench/baseline.json`.
-  The committed baseline was recorded on darwin-arm64, and the ratios differ somewhat between
-  CPUs, so CI on ubuntu x64 applies only the hard limit (`BENCH_WARN` set equal to `BENCH_FAIL`).
-  To tighten it, record the baseline on the runner (run `npm run bench:update` in a CI job and
-  commit the file it writes), then restore the 1.15 warning in `.github/workflows/ci.yml`.
+- `npm run bench:ab -- --base <dir>`: benchmarks this checkout against another one in
+  alternating rounds on the same machine (`bench/ab.ts`), so that the machine's speed and load
+  cancel out; there is no stored baseline. Each round runs `bench/measure.ts` once per side, as
+  separate processes, against that side's `src/`; each case's time is the median over the rounds.
+  Head / base above `BENCH_WARN` (default 1.10) is a warning annotation, above `BENCH_FAIL`
+  (default 1.25) an error and exit code 1. CI's `bench` job runs it with 5 rounds: on a pull
+  request against the PR's base commit, on a push to main against the commit main was at before
+  the push (`github.event.before`); a push that creates a branch has no base and skips. Locally:
+  `git worktree add .bench-base <ref>` (ignored by git and the linters), then
+  `npm run bench:ab -- --base .bench-base`, then `git worktree remove .bench-base`. Expect a few
+  percent of noise between identical sides, more on a busy machine.
+- `npm run bench`: times this checkout's workloads and prints each mode's cost per node and as a
+  multiple of plain evaluation. The workloads (`bench/workloads.ts`) take the library as a
+  parameter so that `ab.ts` can run the same code against both sides; they use only
+  `Arithmetic`, `logsumexp`, `plain`, `Tape` and `Forward`, which every version has.
 
 ## Doc tests
 
@@ -147,6 +152,7 @@ npm run check           # every gate above
 npm test                # just the tests
 npm run mutate          # mutation testing
 npm run bench           # time the workloads
+npm run bench:ab -- --base <dir>   # compare with another checkout
 npm run example         # the production-line walkthrough
 npm run format          # apply Prettier
 npm run api:update      # rebuild and refresh etc/adjointly.api.md

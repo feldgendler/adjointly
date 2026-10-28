@@ -1,9 +1,18 @@
 /*
  * The functions the benchmark times, each written once against Arithmetic. Inputs are generated
  * from a fixed seed so every run measures the same computation.
+ *
+ * The library is a parameter rather than an import, so that the A/B comparison (ab.ts) can run
+ * exactly these workloads against another checkout's src/. They use only Arithmetic and logsumexp,
+ * which every version has; keep it that way, or the comparison against older commits breaks.
  */
 
-import { type Arithmetic, logsumexp } from '../src/index.ts';
+import type * as Adjointly from '../src/index.ts';
+
+type Arithmetic<T> = Adjointly.Arithmetic<T>;
+
+/** The parts of the library the workloads and the measurement use. */
+export type Library = Pick<typeof Adjointly, 'logsumexp' | 'plain' | 'Tape' | 'Forward'>;
 
 function rng(seed: number): () => number {
   let s = seed >>> 0;
@@ -57,15 +66,18 @@ function network(): Workload {
  * Many inputs, transcendental-heavy: a log-sum-exp over 2e4 inputs, each passed through
  * sigmoid, log1p and a power. About 1.4e5 tape nodes.
  */
-function transcendental(): Workload {
+function transcendental(lib: Library): Workload {
   const r = rng(2);
   const at = Array.from({ length: 20000 }, () => r() * 4 - 2);
   function f<T>(A: Arithmetic<T>, xs: readonly T[]): T {
     const half = A.constant(1.5);
     const terms = xs.map((x) => A.pow(A.log1p(A.sigmoid(x)), half));
-    return logsumexp(A, terms);
+    return lib.logsumexp(A, terms);
   }
   return { name: 'transcendental', at, f };
 }
 
-export const workloads: readonly Workload[] = [network(), transcendental()];
+/** The workloads, built on `lib`. */
+export function workloads(lib: Library): readonly Workload[] {
+  return [network(), transcendental(lib)];
+}

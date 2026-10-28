@@ -6,3 +6,4 @@ temp/
 etc/*.api.md
 CHANGELOG.md
 package-lock.json
+.bench-base/

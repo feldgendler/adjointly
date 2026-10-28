@@ -62,14 +62,13 @@
     "attw": "attw --pack . --profile esm-only",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run publint && npm run attw && npm run api:check",
     "mutate": "stryker run",
-    "bench": "node bench/run.ts",
-    "bench:compare": "node bench/run.ts --compare",
-    "bench:update": "node bench/run.ts --update",
+    "bench": "node bench/measure.ts",
     "changeset": "changeset",
     "release": "changeset publish",
     "prepublishOnly": "npm run check",
     "example": "node examples/production-line/run.ts",
-    "version-packages": "changeset version"
+    "version-packages": "changeset version",
+    "bench:ab": "node bench/ab.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
