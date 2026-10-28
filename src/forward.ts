@@ -82,12 +82,19 @@ export class Forward implements Arithmetic<Dual> {
     return this.push(x, tangent);
   }
 
-  /** {@inheritDoc Arithmetic.constant} */
+  /**
+   * Lift a number into `T` as a constant: its derivative with respect to every input is zero.
+   * On a `Tape` it still appends a node (constants are leaves of the tape).
+   */
   constant(x: number): Dual {
     return this.push(x, 0);
   }
 
-  /** {@inheritDoc Arithmetic.value} */
+  /**
+   * The current numeric value of `a`. Use it to branch (`if (A.value(x) > 0)`), to log, or to
+   * return a result. The number it returns carries no derivative information: anything computed
+   * from it with ordinary arithmetic is a constant as far as differentiation is concerned.
+   */
   value(a: Dual): number {
     return this.val[a]!;
   }
@@ -120,14 +127,14 @@ export class Forward implements Arithmetic<Dual> {
   // monomorphic and inlined; see the same note in tape.ts. neg, add and sub multiply directly:
   // their partials are always 1 or -1, never 0, so `times` would change nothing.
 
-  /** {@inheritDoc Arithmetic.neg} */
+  /** `-a`. */
   neg(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.neg.value(x);
     return this.push(y, P.neg.deriv(x, y) * ta);
   }
-  /** {@inheritDoc Arithmetic.add} */
+  /** `a + b`. */
   add(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -136,7 +143,7 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.add.value(x, z);
     return this.push(y, P.add.da(x, z, y) * ta + P.add.db(x, z, y) * tb);
   }
-  /** {@inheritDoc Arithmetic.sub} */
+  /** `a - b`. */
   sub(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -145,7 +152,7 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.sub.value(x, z);
     return this.push(y, P.sub.da(x, z, y) * ta + P.sub.db(x, z, y) * tb);
   }
-  /** {@inheritDoc Arithmetic.mul} */
+  /** `a * b`. */
   mul(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -154,7 +161,7 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.mul.value(x, z);
     return this.push(y, times(P.mul.da(x, z, y), ta) + times(P.mul.db(x, z, y), tb));
   }
-  /** {@inheritDoc Arithmetic.div} */
+  /** `a / b`. */
   div(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -163,56 +170,61 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.div.value(x, z);
     return this.push(y, times(P.div.da(x, z, y), ta) + times(P.div.db(x, z, y), tb));
   }
-  /** {@inheritDoc Arithmetic.recip} */
+  /** `1 / a`. */
   recip(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.recip.value(x);
     return this.push(y, times(P.recip.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.square} */
+  /** `a * a`, one node instead of a `mul` of `a` with itself. */
   square(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.square.value(x);
     return this.push(y, times(P.square.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.sqrt} */
+  /** `sqrt(a)`; its derivative at `0` is `+Infinity`. */
   sqrt(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sqrt.value(x);
     return this.push(y, times(P.sqrt.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.exp} */
+  /** `e^a`. */
   exp(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.exp.value(x);
     return this.push(y, times(P.exp.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.expm1} */
+  /** `e^a - 1`, accurate for small `a`. */
   expm1(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.expm1.value(x);
     return this.push(y, times(P.expm1.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.log} */
+  /** Natural logarithm. */
   log(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.log.value(x);
     return this.push(y, times(P.log.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.log1p} */
+  /** `log(1 + a)`, accurate for small `a`. */
   log1p(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.log1p.value(x);
     return this.push(y, times(P.log1p.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.pow} */
+  /**
+   * `a ** b`, differentiable in both arguments. The derivative with respect to `b` is `0` wherever
+   * `a <= 0`; the derivative with respect to `a` is `0` wherever `b === 0`. For a fixed numeric
+   * exponent pass `A.constant(b)`; for `b = 2` prefer {@link Arithmetic.square}, for `b = 0.5`
+   * prefer {@link Arithmetic.sqrt}.
+   */
   pow(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -221,14 +233,14 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.pow.value(x, z);
     return this.push(y, times(P.pow.da(x, z, y), ta) + times(P.pow.db(x, z, y), tb));
   }
-  /** {@inheritDoc Arithmetic.abs} */
+  /** `|a|`; its derivative at `0` is `0`. */
   abs(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.abs.value(x);
     return this.push(y, times(P.abs.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.min} */
+  /** The smaller of `a` and `b`; on a tie the derivative flows to `a`. */
   min(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -237,7 +249,7 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.min.value(x, z);
     return this.push(y, times(P.min.da(x, z, y), ta) + times(P.min.db(x, z, y), tb));
   }
-  /** {@inheritDoc Arithmetic.max} */
+  /** The larger of `a` and `b`; on a tie the derivative flows to `a`. */
   max(a: Dual, b: Dual): Dual {
     const x = this.val[a]!;
     const z = this.val[b]!;
@@ -246,35 +258,35 @@ export class Forward implements Arithmetic<Dual> {
     const y = P.max.value(x, z);
     return this.push(y, times(P.max.da(x, z, y), ta) + times(P.max.db(x, z, y), tb));
   }
-  /** {@inheritDoc Arithmetic.sin} */
+  /** Sine. */
   sin(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sin.value(x);
     return this.push(y, times(P.sin.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.cos} */
+  /** Cosine. */
   cos(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.cos.value(x);
     return this.push(y, times(P.cos.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.tanh} */
+  /** Hyperbolic tangent. */
   tanh(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.tanh.value(x);
     return this.push(y, times(P.tanh.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.sigmoid} */
+  /** Logistic sigmoid `1 / (1 + e^-a)`, stable for any `a`. */
   sigmoid(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sigmoid.value(x);
     return this.push(y, times(P.sigmoid.deriv(x, y), ta));
   }
-  /** {@inheritDoc Arithmetic.softplus} */
+  /** Softplus `log(1 + e^a)`, stable for any `a`; its derivative is `sigmoid(a)`. */
   softplus(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;

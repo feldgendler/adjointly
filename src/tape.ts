@@ -157,12 +157,19 @@ export class Tape implements Arithmetic<Var> {
     return Array.from(xs, (x) => this.push(x, SINK, 0, SINK, 0));
   }
 
-  /** {@inheritDoc Arithmetic.constant} */
+  /**
+   * Lift a number into `T` as a constant: its derivative with respect to every input is zero.
+   * On a `Tape` it still appends a node (constants are leaves of the tape).
+   */
   constant(x: number): Var {
     return this.push(x, SINK, 0, SINK, 0);
   }
 
-  /** {@inheritDoc Arithmetic.value} */
+  /**
+   * The current numeric value of `a`. Use it to branch (`if (A.value(x) > 0)`), to log, or to
+   * return a result. The number it returns carries no derivative information: anything computed
+   * from it with ordinary arithmetic is a constant as far as differentiation is concerned.
+   */
   value(a: Var): number {
     return this.val[a]!;
   }
@@ -329,134 +336,139 @@ export class Tape implements Arithmetic<Var> {
   // the table entry as an argument was 2x slower: its call sites see every primitive, so V8 cannot
   // inline them, while these are monomorphic. Keep the table the only place a formula is written.
 
-  /** {@inheritDoc Arithmetic.neg} */
+  /** `-a`. */
   neg(a: Var): Var {
     const x = this.val[a]!;
     const y = P.neg.value(x);
     return this.push(y, a, P.neg.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.add} */
+  /** `a + b`. */
   add(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.add.value(x, z);
     return this.push(y, a, P.add.da(x, z, y), b, P.add.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.sub} */
+  /** `a - b`. */
   sub(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.sub.value(x, z);
     return this.push(y, a, P.sub.da(x, z, y), b, P.sub.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.mul} */
+  /** `a * b`. */
   mul(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.mul.value(x, z);
     return this.push(y, a, P.mul.da(x, z, y), b, P.mul.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.div} */
+  /** `a / b`. */
   div(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.div.value(x, z);
     return this.push(y, a, P.div.da(x, z, y), b, P.div.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.recip} */
+  /** `1 / a`. */
   recip(a: Var): Var {
     const x = this.val[a]!;
     const y = P.recip.value(x);
     return this.push(y, a, P.recip.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.square} */
+  /** `a * a`, one node instead of a `mul` of `a` with itself. */
   square(a: Var): Var {
     const x = this.val[a]!;
     const y = P.square.value(x);
     return this.push(y, a, P.square.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.sqrt} */
+  /** `sqrt(a)`; its derivative at `0` is `+Infinity`. */
   sqrt(a: Var): Var {
     const x = this.val[a]!;
     const y = P.sqrt.value(x);
     return this.push(y, a, P.sqrt.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.exp} */
+  /** `e^a`. */
   exp(a: Var): Var {
     const x = this.val[a]!;
     const y = P.exp.value(x);
     return this.push(y, a, P.exp.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.expm1} */
+  /** `e^a - 1`, accurate for small `a`. */
   expm1(a: Var): Var {
     const x = this.val[a]!;
     const y = P.expm1.value(x);
     return this.push(y, a, P.expm1.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.log} */
+  /** Natural logarithm. */
   log(a: Var): Var {
     const x = this.val[a]!;
     const y = P.log.value(x);
     return this.push(y, a, P.log.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.log1p} */
+  /** `log(1 + a)`, accurate for small `a`. */
   log1p(a: Var): Var {
     const x = this.val[a]!;
     const y = P.log1p.value(x);
     return this.push(y, a, P.log1p.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.pow} */
+  /**
+   * `a ** b`, differentiable in both arguments. The derivative with respect to `b` is `0` wherever
+   * `a <= 0`; the derivative with respect to `a` is `0` wherever `b === 0`. For a fixed numeric
+   * exponent pass `A.constant(b)`; for `b = 2` prefer {@link Arithmetic.square}, for `b = 0.5`
+   * prefer {@link Arithmetic.sqrt}.
+   */
   pow(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.pow.value(x, z);
     return this.push(y, a, P.pow.da(x, z, y), b, P.pow.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.abs} */
+  /** `|a|`; its derivative at `0` is `0`. */
   abs(a: Var): Var {
     const x = this.val[a]!;
     const y = P.abs.value(x);
     return this.push(y, a, P.abs.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.min} */
+  /** The smaller of `a` and `b`; on a tie the derivative flows to `a`. */
   min(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.min.value(x, z);
     return this.push(y, a, P.min.da(x, z, y), b, P.min.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.max} */
+  /** The larger of `a` and `b`; on a tie the derivative flows to `a`. */
   max(a: Var, b: Var): Var {
     const x = this.val[a]!;
     const z = this.val[b]!;
     const y = P.max.value(x, z);
     return this.push(y, a, P.max.da(x, z, y), b, P.max.db(x, z, y));
   }
-  /** {@inheritDoc Arithmetic.sin} */
+  /** Sine. */
   sin(a: Var): Var {
     const x = this.val[a]!;
     const y = P.sin.value(x);
     return this.push(y, a, P.sin.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.cos} */
+  /** Cosine. */
   cos(a: Var): Var {
     const x = this.val[a]!;
     const y = P.cos.value(x);
     return this.push(y, a, P.cos.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.tanh} */
+  /** Hyperbolic tangent. */
   tanh(a: Var): Var {
     const x = this.val[a]!;
     const y = P.tanh.value(x);
     return this.push(y, a, P.tanh.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.sigmoid} */
+  /** Logistic sigmoid `1 / (1 + e^-a)`, stable for any `a`. */
   sigmoid(a: Var): Var {
     const x = this.val[a]!;
     const y = P.sigmoid.value(x);
     return this.push(y, a, P.sigmoid.deriv(x, y), SINK, 0);
   }
-  /** {@inheritDoc Arithmetic.softplus} */
+  /** Softplus `log(1 + e^a)`, stable for any `a`; its derivative is `sigmoid(a)`. */
   softplus(a: Var): Var {
     const x = this.val[a]!;
     const y = P.softplus.value(x);
