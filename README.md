@@ -184,13 +184,14 @@ sensitivity to the price. Run it with `npm run example`.
 
 Where a primitive has no derivative, it uses a fixed, documented one:
 
-| Primitive                | Where   | Derivative used                                                         |
-| ------------------------ | ------- | ----------------------------------------------------------------------- |
-| `abs(x)`                 | `x = 0` | `0`                                                                     |
-| `max(a, b)`, `min(a, b)` | `a = b` | all to the first argument: `∂/∂a = 1`, `∂/∂b = 0`                       |
-| `pow(a, b)`              | `a ≤ 0` | `∂/∂b = 0` (the real power is not differentiable in the exponent there) |
-| `pow(a, b)`              | `b = 0` | `∂/∂a = 0` (so `0^0` does not give `0 · ∞`)                             |
-| `sqrt(x)`                | `x = 0` | `+∞`, the true one-sided limit                                          |
+| Primitive                | Where               | Derivative used                                                         |
+| ------------------------ | ------------------- | ----------------------------------------------------------------------- |
+| `abs(x)`                 | `x = 0`             | `0`                                                                     |
+| `max(a, b)`, `min(a, b)` | `a = b`             | all to the first argument: `∂/∂a = 1`, `∂/∂b = 0`                       |
+| `pow(a, b)`              | `a ≤ 0`             | `∂/∂b = 0` (the real power is not differentiable in the exponent there) |
+| `pow(a, b)`              | `b = 0`             | `∂/∂a = 0` (so `0^0` does not give `0 · ∞`)                             |
+| `sqrt(x)`                | `x = 0` or `x = -0` | `+∞`, the true one-sided limit                                          |
+| `max(a, b)`, `min(a, b)` | `a` or `b` is `NaN` | `NaN` for both, like `abs(NaN)`                                         |
 
 One rule completes the picture, the **zero rule**: every term of the chain rule is a local partial
 times an incoming adjoint (reverse mode) or tangent (forward mode), and if either factor is exactly
@@ -206,6 +207,8 @@ before they cancel. [docs/concepts.md](docs/concepts.md#the-zero-rule) has the d
 - `sigmoid` and `softplus` are primitives, evaluated without overflow for any argument, with
   derivatives that keep full relative precision in the tails. Build them from `exp` and `log`
   yourself and `softplus(800)` is `Infinity`.
+- `tanh`'s derivative is computed from `exp(-2|x|)`, not as `1 - tanh(x)^2`, which cancels to 0
+  in the tails.
 - `expm1` and `log1p` are accurate near `0`, where `exp(x) - 1` and `log(1 + x)` lose every digit.
 - `logsumexp` and `softmax` subtract the largest input (as a constant) before exponentiating. The
   shift cancels exactly in the math, so the gradient is exact, and nothing overflows.

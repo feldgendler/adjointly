@@ -209,11 +209,20 @@ describe('subgradient conventions and edge cases', () => {
     }
   });
 
-  test('max and min propagate NaN in their value', () => {
-    expect(primitives.max.value(NaN, 1)).toBeNaN();
-    expect(primitives.max.value(1, NaN)).toBeNaN();
-    expect(primitives.min.value(NaN, 1)).toBeNaN();
-    expect(primitives.min.value(1, NaN)).toBeNaN();
+  test('max and min with a NaN argument: NaN value and NaN partials, like abs', () => {
+    for (const name of ['max', 'min'] as const) {
+      for (const [a, b] of [
+        [NaN, 1],
+        [1, NaN],
+        [NaN, NaN],
+      ] as const) {
+        const r = binaryEverywhere(name, a, b);
+        expect(
+          [r.tableValue, r.tapeDa, r.tapeDb, r.forwardDa, r.forwardDb].every(Number.isNaN),
+        ).toBe(true);
+      }
+    }
+    expect(unaryEverywhere('abs', NaN).tapeDeriv).toBeNaN();
   });
 
   test('pow: d/db is 0 for a non-positive base', () => {
@@ -231,31 +240,54 @@ describe('subgradient conventions and edge cases', () => {
     expectClose(binaryEverywhere('pow', 5, 0).tapeDb, Math.log(5));
   });
 
-  test('sqrt at 0 has derivative +Infinity', () => {
+  test('sqrt at 0 has derivative +Infinity, at -0 too', () => {
     expect(unaryEverywhere('sqrt', 0).tapeDeriv).toBe(Infinity);
+    expect(unaryEverywhere('sqrt', -0).tapeDeriv).toBe(Infinity);
+    expect(unaryEverywhere('sqrt', -0).forwardDeriv).toBe(Infinity);
+  });
+
+  test('tanh keeps its derivative accurate in the tails', () => {
+    for (const x of [15, -15, 20, 40, -300]) {
+      const e = Math.exp(-2 * Math.abs(x));
+      const want = (4 * e) / (1 + e) ** 2;
+      expect(want).toBeGreaterThan(0);
+      expectClose(unaryEverywhere('tanh', x).tapeDeriv, want, 1e-14, 0);
+    }
+    expect(unaryEverywhere('tanh', 0).tapeDeriv).toBe(1);
+    expect(unaryEverywhere('tanh', 800).tapeDeriv).toBe(0);
   });
 
   test('sigmoid is stable and accurate in both tails', () => {
     // Below about -709, exp(-x) overflows; the stable form still gives the subnormal answer.
     expect(primitives.sigmoid.value(-720)).toBeGreaterThan(0);
-    expectClose(primitives.sigmoid.value(-720), Math.exp(-720), 1e-6);
+    expectClose(primitives.sigmoid.value(-720), Math.exp(-720), 1e-6, 0);
     expect(primitives.sigmoid.value(800)).toBe(1);
     expect(primitives.sigmoid.value(-800)).toBe(0);
     expect(primitives.sigmoid.value(0)).toBe(0.5);
     // Far out, the derivative is e^-|x| to full relative precision, not 0 or NaN.
-    expectClose(primitives.sigmoid.deriv(40, primitives.sigmoid.value(40)), Math.exp(-40), 1e-12);
-    expectClose(primitives.sigmoid.deriv(-40, primitives.sigmoid.value(-40)), Math.exp(-40), 1e-12);
-    expectClose(primitives.sigmoid.value(-40), Math.exp(-40), 1e-12);
+    expectClose(
+      primitives.sigmoid.deriv(40, primitives.sigmoid.value(40)),
+      Math.exp(-40),
+      1e-12,
+      0,
+    );
+    expectClose(
+      primitives.sigmoid.deriv(-40, primitives.sigmoid.value(-40)),
+      Math.exp(-40),
+      1e-12,
+      0,
+    );
+    expectClose(primitives.sigmoid.value(-40), Math.exp(-40), 1e-12, 0);
     expect(primitives.sigmoid.deriv(800, 1)).toBe(0);
     expect(primitives.sigmoid.deriv(0, 0.5)).toBe(0.25);
   });
 
   test('softplus is stable in both tails', () => {
     expect(primitives.softplus.value(800)).toBe(800);
-    expectClose(primitives.softplus.value(-40), Math.exp(-40), 1e-12);
+    expectClose(primitives.softplus.value(-40), Math.exp(-40), 1e-12, 0);
     expect(primitives.softplus.value(0)).toBe(Math.LN2);
     expect(primitives.softplus.deriv(800, 800)).toBe(1);
-    expectClose(primitives.softplus.deriv(-40, 0), Math.exp(-40), 1e-12);
+    expectClose(primitives.softplus.deriv(-40, 0), Math.exp(-40), 1e-12, 0);
     expect(primitives.softplus.deriv(0, Math.LN2)).toBe(0.5);
   });
 

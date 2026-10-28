@@ -82,7 +82,8 @@ function sigmoidDeriv(x: number): number {
  * | `abs` | derivative at `0` is `0` |
  * | `max`, `min` | on a tie (`a === b`) the whole derivative goes to the first argument `a` |
  * | `pow` | `d/db` is `0` wherever `a <= 0`; `d/da` is `0` wherever `b === 0` |
- * | `sqrt` | derivative at `0` is `+Infinity` (the true one-sided limit) |
+ * | `sqrt` | derivative at `0` (and `-0`) is `+Infinity` (the true one-sided limit) |
+ * | `max`, `min` | if either argument is `NaN`, the value and both partials are `NaN`, as for `abs` |
  *
  * Everywhere else the partials are the ordinary analytic derivatives, and outside a function's
  * domain (`log` of a negative, `sqrt` of a negative) the value and partials are whatever IEEE
@@ -143,11 +144,12 @@ export const primitives = Object.freeze({
     (x) => x * x,
     (x) => 2 * x,
   ),
-  /** `sqrt(x)`; derivative `+Infinity` at `0`. */
+  /** `sqrt(x)`; derivative `+Infinity` at `0` and at `-0`. */
   sqrt: unary(
     'sqrt',
     (x) => Math.sqrt(x),
-    (_x, y) => 0.5 / y,
+    // `y + 0` turns sqrt(-0) = -0 into +0, so the derivative there is +Infinity, not -Infinity.
+    (_x, y) => 0.5 / (y + 0),
   ),
   /** `e^x`. */
   exp: unary(
@@ -190,19 +192,25 @@ export const primitives = Object.freeze({
     (x) => Math.abs(x),
     (x) => (x > 0 ? 1 : x < 0 ? -1 : x === 0 ? 0 : NaN),
   ),
-  /** The smaller of `a` and `b`; on a tie the derivative goes to `a`. `NaN` if either is `NaN`. */
+  /**
+   * The smaller of `a` and `b`; on a tie the derivative goes to `a`. If either is `NaN`, the value
+   * and both partials are `NaN`.
+   */
   min: binary(
     'min',
     (a, b) => Math.min(a, b),
-    (a, b) => (a <= b ? 1 : 0),
-    (a, b) => (a <= b ? 0 : 1),
+    (a, b) => (a <= b ? 1 : a > b ? 0 : NaN),
+    (a, b) => (a <= b ? 0 : a > b ? 1 : NaN),
   ),
-  /** The larger of `a` and `b`; on a tie the derivative goes to `a`. `NaN` if either is `NaN`. */
+  /**
+   * The larger of `a` and `b`; on a tie the derivative goes to `a`. If either is `NaN`, the value
+   * and both partials are `NaN`.
+   */
   max: binary(
     'max',
     (a, b) => Math.max(a, b),
-    (a, b) => (a >= b ? 1 : 0),
-    (a, b) => (a >= b ? 0 : 1),
+    (a, b) => (a >= b ? 1 : a < b ? 0 : NaN),
+    (a, b) => (a >= b ? 0 : a < b ? 1 : NaN),
   ),
   /** Sine. */
   sin: unary(
@@ -220,7 +228,13 @@ export const primitives = Object.freeze({
   tanh: unary(
     'tanh',
     (x) => Math.tanh(x),
-    (_x, y) => 1 - y * y,
+    // 1 - tanh(x)^2, written as 4e / (1 + e)^2 with e = exp(-2|x|): `1 - y * y` cancels to
+    // nothing in the tails, where y rounds to 1.
+    (x) => {
+      const e = Math.exp(-2 * Math.abs(x));
+      const s = 1 + e;
+      return (4 * e) / (s * s);
+    },
   ),
   /** Logistic sigmoid `1 / (1 + e^-x)`, stable for any `x`. */
   sigmoid: unary('sigmoid', sigmoidValue, sigmoidDeriv),

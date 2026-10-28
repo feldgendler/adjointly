@@ -23,7 +23,7 @@ jvp(f, [1, 2], [0, 1]); //=> { value: 2 + log(1 + E), derivative: 1 }
 checkGradient(f, [1, 2]).ok; //=> true
 ```
 
-Primitives (all on `Arithmetic`): neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs, min, max, sin, cos, tanh, sigmoid, softplus. Subgradients: abs'(0) = 0; max/min ties go to the first argument; pow's exponent derivative is 0 for a base <= 0, its base derivative 0 for exponent 0; sqrt'(0) = Infinity. Zero rule: a chain-rule term with an exactly zero partial, adjoint or tangent is 0, even against Infinity or NaN.
+Primitives (all on `Arithmetic`): neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs, min, max, sin, cos, tanh, sigmoid, softplus. Subgradients: abs'(0) = 0; max/min ties go to the first argument; pow's exponent derivative is 0 for a base <= 0, its base derivative 0 for exponent 0; sqrt'(0) = sqrt'(-0) = Infinity; max/min with a NaN argument have NaN partials. Zero rule: a chain-rule term with an exactly zero partial, adjoint or tangent is 0, even against Infinity or NaN.
 
 ## Docs
 
