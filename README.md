@@ -172,7 +172,7 @@ discarding everything after it; `vjp` seeds several outputs at once. See
 
 ## A worked example
 
-[examples/production-line/](examples/production-line/README.md) schedules maintenance on a
+[examples/production-line/](https://github.com/feldgendler/adjointly/tree/main/examples/production-line) schedules maintenance on a
 simulated production line, minute by minute over a shift. One forward and one backward pass give
 the sensitivity of profit to every station-minute's maintenance decision; that gradient estimates
 the effect of every candidate change to the schedule; a local search that tries the changes in

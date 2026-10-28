@@ -32,4 +32,4 @@ Primitives (all on `Arithmetic`): neg, add, sub, mul, div, recip, square, sqrt, 
 - [docs/api.md](docs/api.md): every export by topic, with its contract
 - [docs/recipes.md](docs/recipes.md): inner loops, mark/rewind, several outputs, Jacobians, constrained parameters, testing gradients
 - [docs/pitfalls.md](docs/pitfalls.md): mistakes that silently give wrong derivatives
-- [examples/production-line](examples/production-line/README.md): a worked optimisation example (in the repository, not the package)
+- [examples/production-line](https://github.com/feldgendler/adjointly/tree/main/examples/production-line): a worked optimisation example (in the repository, not the package)

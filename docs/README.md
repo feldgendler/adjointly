@@ -12,7 +12,7 @@ by the test suite, and a line ending in `//=> value` is asserted.
 | [pitfalls.md](pitfalls.md) | The mistakes that silently give a wrong derivative, and how to avoid them                                                     |
 
 A worked, end-to-end example lives in
-[examples/production-line/](../examples/production-line/README.md): maintenance scheduling on a
+[examples/production-line/](https://github.com/feldgendler/adjointly/tree/main/examples/production-line) (in the repository, not the npm package): maintenance scheduling on a
 simulated production line, using the gradient to rank discrete moves and forward mode for a
 parameter sensitivity.
 

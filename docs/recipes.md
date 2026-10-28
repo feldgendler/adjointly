@@ -146,6 +146,6 @@ checkGradient(f, [1, 2, 3]).ok; //=> true
 
 ## The worked example
 
-[examples/production-line/](../examples/production-line/README.md) puts these together: a
+[examples/production-line/](https://github.com/feldgendler/adjointly/tree/main/examples/production-line) (in the repository, not the npm package) puts these together: a
 minute-by-minute simulation written once, its gradient with respect to 1 440 decisions from one
 tape pass, first-order estimates ranking discrete moves, and forward mode for a parameter.
