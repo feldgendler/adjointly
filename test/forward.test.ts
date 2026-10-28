@@ -9,6 +9,9 @@ test('starts empty with the requested capacity, and grows by doubling', () => {
   for (const capacity of [0, -1, 2.7, NaN, Infinity]) {
     expect(() => new Forward({ capacity }), String(capacity)).toThrow(RangeError);
   }
+  expect(() => new Forward({ capacity: NaN })).toThrow(
+    'Forward: capacity must be a positive integer, not NaN',
+  );
   const F = new Forward({ capacity: 1 });
   const x = F.input(1.0001, 1);
   let y: Dual = x;

@@ -51,6 +51,11 @@ function binary(
   return Object.freeze({ name, value, da, db });
 }
 
+/** Whether `a` or `b` is `NaN`: the one case where neither `a <= b` nor `a > b` holds. */
+function eitherNaN(a: number, b: number): boolean {
+  return Number.isNaN(a) || Number.isNaN(b);
+}
+
 /**
  * Logistic sigmoid `1 / (1 + e^-x)`, evaluated without overflow for any `x`: `exp` is only ever
  * called on `-|x|`.
@@ -199,8 +204,8 @@ export const primitives = Object.freeze({
   min: binary(
     'min',
     (a, b) => Math.min(a, b),
-    (a, b) => (a <= b ? 1 : a > b ? 0 : NaN),
-    (a, b) => (a <= b ? 0 : a > b ? 1 : NaN),
+    (a, b) => (a <= b ? 1 : eitherNaN(a, b) ? NaN : 0),
+    (a, b) => (a <= b ? 0 : eitherNaN(a, b) ? NaN : 1),
   ),
   /**
    * The larger of `a` and `b`; on a tie the derivative goes to `a`. If either is `NaN`, the value
@@ -209,8 +214,8 @@ export const primitives = Object.freeze({
   max: binary(
     'max',
     (a, b) => Math.max(a, b),
-    (a, b) => (a >= b ? 1 : a < b ? 0 : NaN),
-    (a, b) => (a >= b ? 0 : a < b ? 1 : NaN),
+    (a, b) => (a >= b ? 1 : eitherNaN(a, b) ? NaN : 0),
+    (a, b) => (a >= b ? 0 : eitherNaN(a, b) ? NaN : 1),
   ),
   /** Sine. */
   sin: unary(

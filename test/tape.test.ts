@@ -12,6 +12,9 @@ describe('construction and growth', () => {
     for (const capacity of [0, -1, 2.7, NaN, Infinity]) {
       expect(() => new Tape({ capacity }), String(capacity)).toThrow(RangeError);
     }
+    expect(() => new Tape({ capacity: 2.7 })).toThrow(
+      'Tape: capacity must be a positive integer, not 2.7',
+    );
     expect(new Tape().size).toBe(0);
   });
 
