@@ -44,12 +44,15 @@ jobs:
       - run: npm ci
       - run: npm run check
       # With pending changesets this opens or updates a "Version packages" pull request; once that
-      # is merged, it publishes the new version.
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+      # is merged, it publishes the new version. v2 of the action: inputs are `*-script`,
+      # `commit-message`, `pr-title`; the token is the `github-token` input (default: this
+      # workflow's GITHUB_TOKEN; an env var is no longer read); commits and tags are pushed through
+      # the GitHub API; and it needs @changesets/cli 3, which package.json has. `npm run release`
+      # runs `changeset publish` with the environment the action sets (CHANGESETS_OUTPUT), which
+      # is how it learns what was published.
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: npm run version-packages
-          publish: npm run release
-          commit: 'Version packages'
-          title: 'Version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: npm run version-packages
+          publish-script: npm run release
+          commit-message: 'Version packages'
+          pr-title: 'Version packages'

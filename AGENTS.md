@@ -140,9 +140,9 @@ With pending changesets, the workflow opens a "Version packages" pull request
 (`npm run version-packages`: version bump and CHANGELOG); merging it publishes. That pull request
 is opened with the workflow's `GITHUB_TOKEN`, and GitHub does not start other workflows for
 events caused by that token, so **CI does not run on it**. Before merging, run CI on it by hand
-(push an empty commit to its branch, or close and reopen it), or give `changesets/action` a token
-of a GitHub App or a fine-grained personal access token instead, whose pull requests do trigger
-CI.
+(push an empty commit to its branch, or close and reopen it), or pass `changesets/action` the
+token of a GitHub App or a fine-grained personal access token in its `github-token` input (v2
+reads no token from the environment), whose pull requests do trigger CI.
 
 ## Commands
 
