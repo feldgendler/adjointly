@@ -6,7 +6,8 @@
  *   node bench/measure.ts --lib <dir>/src/index.ts --json
  *                                                  another checkout's library, as JSON (ab.ts)
  *
- * BENCH_TIME sets the milliseconds tinybench spends on each case (default 1000).
+ * BENCH_TIME sets the milliseconds tinybench spends on each case (default 1000); BENCH_ONLY, a
+ * substring of workload names, limits the run to the workloads whose name contains it.
  */
 
 import { pathToFileURL } from 'node:url';
@@ -28,7 +29,8 @@ export async function measure(lib: Library, time: number): Promise<Record<string
   let sink = 0;
   const bench = new Bench({ time, warmupTime: Math.min(300, time) });
   const nodes = new Map<string, number>();
-  for (const w of workloads(lib)) {
+  const only = process.env.BENCH_ONLY ?? '';
+  for (const w of workloads(lib).filter((w) => w.name.includes(only))) {
     tape.clear();
     w.f(tape, tape.inputs(w.at));
     nodes.set(w.name, tape.size);

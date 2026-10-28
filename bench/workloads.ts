@@ -3,8 +3,9 @@
  * from a fixed seed so every run measures the same computation.
  *
  * The library is a parameter rather than an import, so that the A/B comparison (ab.ts) can run
- * exactly these workloads against another checkout's src/. They use only Arithmetic and logsumexp,
- * which every version has; keep it that way, or the comparison against older commits breaks.
+ * exactly these workloads against another checkout's src/. A workload that needs something an
+ * older version lacks is left out for that version (see `workloads`), and ab.ts reports it as a
+ * case the base does not have.
  */
 
 import type * as Adjointly from '../src/index.ts';
@@ -77,7 +78,46 @@ function transcendental(lib: Library): Workload {
   return { name: 'transcendental', at, f };
 }
 
-/** The workloads, built on `lib`. */
+/**
+ * A recurrence driven by data, most of whose operands are fixed coefficients, as in a simulation
+ * or a filter: two inputs (an input gain and the initial state) and 20 000 steps. Written twice,
+ * with every fixed number a `constant()` node and with the plain-number operations (`mulc`,
+ * `subc`), to show what the second spelling saves: the same values and gradient, a third fewer
+ * nodes.
+ */
+function recurrence(numberOperands: boolean): Workload {
+  const T = 20000;
+  const r = rng(3);
+  const u = Float64Array.from({ length: T }, () => r() * 2 - 1);
+  const target = Float64Array.from({ length: T }, () => r() * 2 - 1);
+  const [w, g, h] = [0.9, 0.7, 0.25];
+  const at = [0.8, 0.1]; // input gain, initial state
+  function f<T>(A: Arithmetic<T>, [gain, x0]: readonly T[]): T {
+    const mulc = numberOperands
+      ? (a: T, c: number) => A.mulc(a, c)
+      : (a: T, c: number) => A.mul(a, A.constant(c));
+    const subc = numberOperands
+      ? (a: T, c: number) => A.subc(a, c)
+      : (a: T, c: number) => A.sub(a, A.constant(c));
+    let x: T = x0!;
+    let loss = A.constant(0);
+    for (let t = 0; t < T; t++) {
+      const drive = A.tanh(A.add(mulc(x, w), mulc(gain!, u[t]!)));
+      x = A.add(mulc(drive, g), mulc(x, h));
+      loss = A.add(loss, A.square(subc(x, target[t]!)));
+    }
+    return loss;
+  }
+  return { name: numberOperands ? 'recurrence-numeric' : 'recurrence-constant', at, f };
+}
+
+/** The workloads, built on `lib`; the ones `lib` cannot run are left out. */
 export function workloads(lib: Library): readonly Workload[] {
-  return [network(), transcendental(lib)];
+  const hasNumberOperands = (lib.plain as Partial<Arithmetic<number>>).mulc !== undefined;
+  return [
+    network(),
+    transcendental(lib),
+    recurrence(false),
+    ...(hasNumberOperands ? [recurrence(true)] : []),
+  ];
 }
