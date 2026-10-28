@@ -122,15 +122,20 @@ relative 1e-12; `//=> ~EXPR` loosens that to 1e-6. EXPR may use `Math`'s members
   enums, namespaces or parameter properties.
 - TSDoc on every export, with a contract and an `@example` that the doc tests run.
 - Commits: small and logical, one short line saying what changed. No trailers.
-- User-visible changes get a changeset. The package stays `"private": true` and `UNLICENSED` until
-  the owner decides otherwise; the release workflow is inert until then.
+- User-visible changes get a changeset. The license is MIT (`LICENSE`). The package stays
+  `"private": true` until the owner decides otherwise; the release workflow is inert until then.
+- Versions: `package.json` stays at 0.0.0 until the first release, and the pending first-release
+  changeset is a minor bump, so the first release is 0.1.0. Until 1.0, a breaking change is a
+  minor bump and anything else a patch. `.changeset/config.json` sets
+  `privatePackages.version: true`; without it Changesets ignores a private package and versions
+  nothing.
 
 ## Releasing
 
 `.github/workflows/release.yml` runs only when the repository variable `RELEASE_ENABLED` is
 `true`, and refuses to publish while `package.json` is private. Before enabling it:
 
-- Decide the license, add it, and remove `"private": true`.
+- Remove `"private": true` (the license, MIT, is already in place).
 - Configure npm trusted publishing (OIDC) for this repository and workflow on npmjs.com; no npm
   token is stored.
 - **Provenance and private repositories:** npm may refuse provenance attestations for packages

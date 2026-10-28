@@ -13,7 +13,7 @@
     "optimization",
     "typescript"
   ],
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Alexey Feldgendler",
   "homepage": "https://github.com/feldgendler/adjointly#readme",
   "repository": {

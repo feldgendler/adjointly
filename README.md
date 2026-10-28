@@ -12,7 +12,8 @@ Derivatives are exact to floating-point rounding, not finite-difference approxim
 control flow (loops, branches, early returns) just works. No runtime dependencies, ESM only,
 Node 22 or later (or any modern browser or bundler).
 
-> **License:** not yet decided. The package is `UNLICENSED` and private until it is.
+> **Status:** not yet published; the first release will be 0.1.0, and the API may still change
+> before 1.0. **License:** [MIT](LICENSE).
 
 ## Install
 
