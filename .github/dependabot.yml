@@ -8,6 +8,12 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # TypeScript 7 (the native compiler) has no JavaScript compiler API yet, which
+      # typescript-eslint, Stryker's TypeScript checker and the doc tests' type check
+      # (test/docs.test.ts) all need; typescript-eslint also caps its peer range below 7.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
