@@ -14,9 +14,14 @@
     "typescript"
   ],
   "license": "UNLICENSED",
+  "author": "Alexey Feldgendler",
+  "homepage": "https://github.com/feldgendler/adjointly#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/feldgendler/adjointly.git"
+  },
+  "bugs": {
+    "url": "https://github.com/feldgendler/adjointly/issues"
   },
   "type": "module",
   "sideEffects": false,
@@ -38,6 +43,7 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "npm@11.19.1",
   "publishConfig": {
     "access": "public",
     "provenance": true
@@ -60,10 +66,10 @@
     "bench:compare": "node bench/run.ts --compare",
     "bench:update": "node bench/run.ts --update",
     "changeset": "changeset",
-    "version": "changeset version",
     "release": "changeset publish",
     "prepublishOnly": "npm run check",
-    "example": "node examples/production-line/run.ts"
+    "example": "node examples/production-line/run.ts",
+    "version-packages": "changeset version"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
