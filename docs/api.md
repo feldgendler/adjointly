@@ -43,6 +43,11 @@ Generic over any `Arithmetic`, built from primitives, so they need no derivative
 | `logsumexp(A, xs): T` | `log(sum_i exp(xs[i]))`, shifted by the largest value; throws on an empty list |
 | `softmax(A, xs): T[]` | `exp(xs[i]) / sum_j exp(xs[j])`, shifted likewise; throws on an empty list     |
 
+With infinite inputs both return the limit of the finite case: if the largest input is
+`+Infinity`, or every input is `-Infinity`, the weight (the gradient of `logsumexp`, the value of
+`softmax`) is shared equally by the inputs equal to it and is `0` elsewhere; `softmax` then
+returns constants, so its Jacobian is `0`. `NaN` in gives `NaN` out.
+
 ```ts
 import { gradient, logsumexp, softmax, plain } from 'adjointly';
 

@@ -57,8 +57,18 @@ describe('logsumexp', () => {
     expect(logsumexp(plain, [1000, -Infinity])).toBe(1000);
   });
 
-  test('all -Infinity gives -Infinity, not NaN', () => {
-    expect(logsumexp(plain, [-Infinity, -Infinity])).toBe(-Infinity);
+  test('infinite inputs: the limits of the finite case', () => {
+    const lse = (at: number[]) => gradient((A, xs) => logsumexp(A, xs), at);
+    // All -Infinity: as the inputs fall together, the weights stay equal.
+    expect(lse([-Infinity, -Infinity])).toEqual({ value: -Infinity, gradient: [0.5, 0.5] });
+    // A +Infinity input takes all the weight; several share it.
+    expect(lse([Infinity, 0, -1])).toEqual({ value: Infinity, gradient: [1, 0, 0] });
+    expect(lse([Infinity, 0, Infinity])).toEqual({ value: Infinity, gradient: [0.5, 0, 0.5] });
+    // A -Infinity input among finite ones has weight 0.
+    expect(lse([-Infinity, 0])).toEqual({ value: 0, gradient: [0, 1] });
+    // NaN anywhere is NaN.
+    expect(lse([NaN, 0]).value).toBeNaN();
+    expect(lse([NaN, Infinity]).value).toBeNaN();
   });
 
   test('its gradient is the softmax, exactly through the shift', () => {
@@ -83,8 +93,18 @@ describe('softmax', () => {
     expectAllClose(softmax(plain, [1000, 1000]), [0.5, 0.5]);
     expectAllClose(softmax(plain, [-1000, -1000 + Math.log(3)]), [0.25, 0.75], 1e-12);
     expect(softmax(plain, [5])).toEqual([1]);
-    // +Infinity cannot be shifted away: Infinity * 0 in the normalisation.
-    expect(softmax(plain, [Infinity, 0])[0]).toBeNaN();
+  });
+
+  test('infinite inputs: the limits of the finite case, with a zero Jacobian', () => {
+    expect(softmax(plain, [-Infinity, -Infinity])).toEqual([0.5, 0.5]);
+    expect(softmax(plain, [Infinity, 0, -Infinity])).toEqual([1, 0, 0]);
+    expect(softmax(plain, [Infinity, 0, Infinity])).toEqual([0.5, 0, 0.5]);
+    expect(softmax(plain, [-Infinity, 0])).toEqual([0, 1]);
+    expect(softmax(plain, [NaN, Infinity]).every(Number.isNaN)).toBe(true);
+    const t = new Tape();
+    const xs = t.inputs([Infinity, 0]);
+    t.vjp(softmax(t, xs), [1, 2]);
+    expect(Array.from(t.adjoints(xs))).toEqual([0, 0]);
   });
 
   test('Jacobian is diag(p) - p p^T, by reverse and forward mode', () => {
