@@ -94,13 +94,14 @@ Separately, and in CI:
   alternating rounds on the same machine (`bench/ab.ts`), so that the machine's speed and load
   cancel out; there is no stored baseline. Each round runs `bench/measure.ts` once per side, as
   separate processes, against that side's `src/`; each case's time is the median over the rounds.
-  Head / base above `BENCH_WARN` (default 1.10) is a warning annotation, above `BENCH_FAIL`
-  (default 1.25) an error and exit code 1. CI's `bench` job runs it with 5 rounds: on a pull
+  Head / base above `BENCH_WARN` (default 1.05) is a warning annotation, above `BENCH_FAIL`
+  (default 1.15) an error and exit code 1. CI's `bench` job runs it with 5 rounds: on a pull
   request against the PR's base commit, on a push to main against the commit main was at before
   the push (`github.event.before`); a push that creates a branch has no base and skips. Locally:
   `git worktree add .bench-base <ref>` (ignored by git and the linters), then
-  `npm run bench:ab -- --base .bench-base`, then `git worktree remove .bench-base`. Expect a few
-  percent of noise between identical sides, more on a busy machine.
+  `npm run bench:ab -- --base .bench-base`, then `git worktree remove .bench-base`. On a GitHub
+  runner two identical sides came out within 1.2% of each other; a busy laptop shows up to ~10%,
+  so judge a local run with that in mind.
 - `npm run bench`: times this checkout's workloads and prints each mode's cost per node and as a
   multiple of plain evaluation. The workloads (`bench/workloads.ts`) take the library as a
   parameter so that `ab.ts` can run the same code against both sides; they use only

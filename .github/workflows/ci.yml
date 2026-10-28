@@ -84,5 +84,5 @@ jobs:
       - if: steps.base.outputs.sha
         run: npm run bench:ab -- --base "$RUNNER_TEMP/base" --rounds 5
         env:
-          BENCH_WARN: '1.10'
-          BENCH_FAIL: '1.25'
+          BENCH_WARN: '1.05'
+          BENCH_FAIL: '1.15'

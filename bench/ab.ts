@@ -8,8 +8,8 @@
  * Each round runs bench/measure.ts (this checkout's copy, so both sides time the same workloads)
  * once against each side's src/, as separate processes, alternating which side goes first. A
  * case's time on each side is the median over the rounds; the verdict is head / base. A ratio
- * above BENCH_WARN (default 1.10) is reported as a warning annotation, above BENCH_FAIL (default
- * 1.25) as an error, and the script then exits 1.
+ * above BENCH_WARN (default 1.05) is reported as a warning annotation, above BENCH_FAIL (default
+ * 1.15) as an error, and the script then exits 1.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -27,8 +27,8 @@ const here = resolve(import.meta.dirname, '..');
 const base = resolve(arg('--base'));
 const head = resolve(arg('--head', here));
 const rounds = Number(arg('--rounds', '5'));
-const WARN = Number(process.env.BENCH_WARN ?? 1.1);
-const FAIL = Number(process.env.BENCH_FAIL ?? 1.25);
+const WARN = Number(process.env.BENCH_WARN ?? 1.05);
+const FAIL = Number(process.env.BENCH_FAIL ?? 1.15);
 
 function run(dir: string): Record<string, Timing> {
   const out = execFileSync(
