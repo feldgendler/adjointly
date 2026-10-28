@@ -206,17 +206,18 @@ export class Tape implements Arithmetic<Var> {
     if (outputs.length !== weights.length) {
       throw new RangeError(`Tape.vjp: ${outputs.length} outputs but ${weights.length} weights`);
     }
+    let top = 0; // the latest output, where the sweep starts
     for (const o of outputs) {
       if (o < 1 || o >= this.n) {
         throw new RangeError(`Tape.vjp: ${o} is not a node of this tape (size ${this.size})`);
       }
+      top = Math.max(top, o);
     }
     const adj = this.adj;
     if (outputs.length === 0) {
       adj.fill(0);
       return;
     }
-    const top = Math.max(...outputs); // sweep from the latest output
     adj.fill(0, 0, top + 1);
     outputs.forEach((o, k) => {
       adj[o] = adj[o]! + weights[k]!;

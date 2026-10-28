@@ -187,6 +187,14 @@ describe('vjp', () => {
     expect(t.adjoint(f)).toBe(1); // beyond this sweep: left over, documented as meaningless
   });
 
+  test('takes any number of outputs', () => {
+    const t = new Tape();
+    const x = t.input(2);
+    const outs = Array.from({ length: 200_000 }, () => t.square(x));
+    t.vjp(outs, new Float64Array(outs.length).fill(1));
+    expect(t.adjoint(x)).toBe(4 * 200_000);
+  });
+
   test('with no outputs every adjoint is zero', () => {
     const t = new Tape();
     const x = t.input(2);
