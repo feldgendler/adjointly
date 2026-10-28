@@ -90,10 +90,15 @@ Separately, and in CI:
   the test, or, if the mutant is truly equivalent, say why in a `// Stryker disable next-line`
   comment on that line.
 - `npm run bench:compare`: times the workloads and compares each mode's cost relative to plain
-  evaluation with `bench/baseline.json`; warns above 1.15x the baseline ratio, fails above 1.4x.
-  Ratios rather than milliseconds, because a CI runner and a laptop differ in speed by more than
-  any regression worth catching. **To update the baseline** after an intended performance change:
-  `npm run bench:update` on a quiet machine, check the printed numbers, commit `bench/baseline.json`.
+  evaluation with `bench/baseline.json`; warns above `BENCH_WARN` (default 1.15) times the
+  baseline ratio, fails above `BENCH_FAIL` (default 1.4). Ratios rather than milliseconds, because
+  a CI runner and a laptop differ in speed by more than any regression worth catching. **To update
+  the baseline** after an intended performance change: `npm run bench:update` on a quiet machine,
+  check the printed numbers, commit `bench/baseline.json`.
+  The committed baseline was recorded on darwin-arm64, and the ratios differ somewhat between
+  CPUs, so CI on ubuntu x64 applies only the hard limit (`BENCH_WARN` set equal to `BENCH_FAIL`).
+  To tighten it, record the baseline on the runner (run `npm run bench:update` in a CI job and
+  commit the file it writes), then restore the 1.15 warning in `.github/workflows/ci.yml`.
 
 ## Doc tests
 
@@ -112,6 +117,26 @@ relative 1e-12; `//=> ~EXPR` loosens that to 1e-6. EXPR may use `Math`'s members
 - Commits: small and logical, one short line saying what changed. No trailers.
 - User-visible changes get a changeset. The package stays `"private": true` and `UNLICENSED` until
   the owner decides otherwise; the release workflow is inert until then.
+
+## Releasing
+
+`.github/workflows/release.yml` runs only when the repository variable `RELEASE_ENABLED` is
+`true`, and refuses to publish while `package.json` is private. Before enabling it:
+
+- Decide the license, add it, and remove `"private": true`.
+- Configure npm trusted publishing (OIDC) for this repository and workflow on npmjs.com; no npm
+  token is stored.
+- **Provenance and private repositories:** npm may refuse provenance attestations for packages
+  published from private GitHub repositories. Either make the repository public first, or check
+  npm's current rules and, if needed, drop `"provenance": true` from `publishConfig`.
+
+With pending changesets, the workflow opens a "Version packages" pull request
+(`npm run version-packages`: version bump and CHANGELOG); merging it publishes. That pull request
+is opened with the workflow's `GITHUB_TOKEN`, and GitHub does not start other workflows for
+events caused by that token, so **CI does not run on it**. Before merging, run CI on it by hand
+(push an empty commit to its branch, or close and reopen it), or give `changesets/action` a token
+of a GitHub App or a fine-grained personal access token instead, whose pull requests do trigger
+CI.
 
 ## Commands
 
