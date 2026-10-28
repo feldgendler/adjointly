@@ -14,6 +14,15 @@ Node 22 or later (or any modern browser or bundler).
 
 > **License:** not yet decided. The package is `UNLICENSED` and private until it is.
 
+## Install
+
+```sh
+npm install adjointly
+```
+
+The package is not on npm yet; until it is, build it from this repository (`npm ci && npm run
+build`) and depend on the checkout.
+
 ## Quick start
 
 ```ts
