@@ -38,8 +38,11 @@ minutes or moves a few minutes from one window to another.
    they rank well: at the start, all of the top 20 improve profit, against 61 of the 150 overall.
 4. **Local search in gradient order versus random order.** First-improvement local search evaluates
    candidates one by one and takes the first that improves profit. In gradient order it recomputes
-   the gradient after each accepted move (one tape pass, costing about as much as two or three
-   evaluations) and tries candidates best-estimate first.
+   the gradient after each accepted move and tries candidates best-estimate first. Work is counted
+   in evaluation equivalents: each full evaluation counts 1, and each gradient pass counts what it
+   costs against a plain evaluation, which the example measures by timing both. That makes the work
+   figures vary a little from run to run and machine to machine; the searches themselves are
+   deterministic.
 5. **Forward mode** gives the sensitivity of profit to one parameter in a single pass: to the price
    (which, profit being linear in it, is the value-weighted number of good parts sold), and to the
    rate at which the stations wear.
@@ -64,15 +67,24 @@ A line of 3 stations over a 480-minute shift;
    move 3 min from window 3 to window 4  estimated   19.40   actual   21.00
    20 of the top 20 improve profit; 61 of all 150 do.
 
-4. First-improvement local search from the same start (full evaluations):
-   order                   optimum  moves  to 90% to 1696  in all
-   gradient                1715.43    118      53    1182    1288  + 119 gradient passes
-   random (seed 1)         1696.37    193     547    1115    1230
-   random (seed 2)         1729.84    170     389     644    1196
-   random (seed 3)         1726.45    199     344     713    1434
-   random (seed 4)         1741.50    216     365     707    1410
-   random (seed 5)         1726.09    173     397     759    1144
-   To 90% of the gain, gradient order needed 53 evaluations; random order, a median of 389.
+4. First-improvement local search from the same start. Work is in evaluation equivalents:
+   full evaluations, plus 2.5 for each gradient pass (its cost here, measured). The best optimum
+   any search found is 1741.50; the columns give the work to reach a share of its gain, then each
+   search's own optimum, then all the work, the final round included.
+   order              optimum  moves      50%      75%      85%      90% own opt.   in all
+   gradient           1715.43    118       51       95      279     1365     1483     1591
+   random (seed 1)    1696.37    193      135      408      606      948     1115     1230
+   random (seed 2)    1729.84    170       65      263      423      602     1076     1196
+   random (seed 3)    1726.45    199       79      273      391      684     1309     1434
+   random (seed 4)    1741.50    216       64      182      469      659     1275     1410
+   random (seed 5)    1726.09    173       76      268      446      654     1024     1144
+   Gradient order against the median random search:
+     50%       faster (51 against 76)
+     75%       faster (95 against 268)
+     85%       faster (279 against 446)
+     90%       slower (1365 against 659)
+     own opt.  slower (1483 against 1115)
+     in all    slower (1591 against 1230)
    optimised windows (gradient order):
      station 0: minutes 124-152 (29 min)
      station 0: minutes 247-251 (5 min)
@@ -88,18 +100,27 @@ A line of 3 stations over a 480-minute shift;
 
 ## Reading the result
 
-The gradient earns its keep **far from an optimum**: it reached 90% of the attainable gain in 53
-full evaluations, where random order needed a median of 389. Close to the optimum it stops helping.
-There, every remaining move is small compared with how strongly the minutes of one window interact
-(the yield in a window's later minutes depends on the wear its earlier minutes removed), so the
-first-order estimate is dominated by what it leaves out, and gradient order needs as many
-evaluations to finish as random order does. The different searches also stop at different local
-optima: first-improvement search over a small neighbourhood guarantees no more than that.
+Measured against the best optimum any search found, and counting the gradient passes, the
+gradient order is **faster early and slower late**. In the run above (a gradient pass measured at
+2.5 plain evaluations) it reached half of the attainable gain in 51 evaluation equivalents, three
+quarters in 95 and 85% in 279, against a median of 76, 268 and 446 for the random searches. It
+needed 1365 to reach 90% (median 659), 1483 to reach its own optimum (median 1115), and 1591 in all
+(median 1230): **it was costlier overall**, and its optimum (1715.43) was worse than four of the
+five random searches'. Those last three comparisons hold whatever a gradient pass costs: counting
+full evaluations alone, the gradient order still needs more.
 
-That is the honest shape of first-order information on a discrete problem: an excellent ranking
-while there is a clear direction to go, no better than chance once only curvature is left. A
-practical search uses it for the first phase and something else (random restarts, larger moves,
-or exact evaluation of every candidate) for the last.
+Early on, every step has a clear direction and the first-order estimate ranks the moves well. Near
+an optimum, every remaining move is small compared with how strongly the minutes of one window
+interact (the yield in a window's later minutes depends on the wear its earlier minutes removed),
+so the estimate is dominated by what it leaves out; the gradient order then still pays for a tape
+pass per step and tries candidates in an order no better than chance. First-improvement search over
+a small neighbourhood guarantees only a local optimum, which is why the searches end in different
+places.
+
+That is the honest shape of first-order information on a discrete problem: a good ranking while
+there is a clear direction to go, and a cost once only curvature is left. A practical search would
+use it for the first phase and switch to something else (random order, larger moves, or exact
+evaluation of every candidate) for the last.
 
 An earlier version of this example offered large moves as well (shifts of up to 30 minutes). With
 those, gradient order did worse than random throughout: the estimate of a large shift grows

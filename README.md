@@ -172,13 +172,14 @@ discarding everything after it; `vjp` seeds several outputs at once. See
 
 ## A worked example
 
-[examples/production-line/](https://github.com/feldgendler/adjointly/tree/main/examples/production-line) schedules maintenance on a
-simulated production line, minute by minute over a shift. One forward and one backward pass give
-the sensitivity of profit to every station-minute's maintenance decision; that gradient estimates
-the effect of every candidate change to the schedule; a local search that tries the changes in
-that order reaches 90% of the attainable gain in about a seventh of the evaluations random order
-needs (and, near the optimum, no faster: the example says why). Forward mode gives the
-sensitivity to the price. Run it with `npm run example`.
+[examples/production-line/](https://github.com/feldgendler/adjointly/tree/main/examples/production-line) schedules maintenance on a simulated production line, minute by minute over a shift. One
+forward and one backward pass give the sensitivity of profit to every station-minute's
+maintenance decision, and that gradient estimates the effect of every candidate change to the
+schedule. A local search that tries the changes in that order gets most of the way faster than one
+that tries them at random (three quarters of the best gain in about a third of the work, gradient
+passes counted),
+but is slower to finish and costlier overall: near an optimum the first-order estimate no longer
+ranks the moves. Forward mode gives the sensitivity to the price. Run it with `npm run example`.
 
 ## Subgradient conventions
 

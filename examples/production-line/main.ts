@@ -7,11 +7,13 @@
 import { defaultKnobs, type Line } from './model.ts';
 import { apply, describe, flags, type Schedule } from './schedule.ts';
 import {
-  evaluationsToReach,
   localSearch,
+  measurePassCost,
   Problem,
   rankMoves,
   type SearchResult,
+  totalWork,
+  workToReach,
 } from './search.ts';
 
 export interface ExampleOptions {
@@ -21,6 +23,11 @@ export interface ExampleOptions {
   readonly maxTransfer: number;
   /** Seeds of the random-order searches to compare with. */
   readonly seeds: readonly number[];
+  /**
+   * What a gradient pass costs in plain evaluations. Measured by timing when not given; the tests
+   * fix it so that their output does not depend on the machine.
+   */
+  readonly passCost?: number;
   readonly log: (line: string) => void;
 }
 
@@ -84,34 +91,60 @@ export function runExample(options: ExampleOptions): {
       `${String(improving(actual))} of all ${String(ranked.length)} do.`,
   );
 
-  // 4. First-improvement local search, in gradient order and in random order.
+  // 4. First-improvement local search, in gradient order and in random order. Work is counted in
+  // evaluation equivalents: full evaluations, plus each gradient pass at what one costs measured
+  // against a plain evaluation on this machine.
+  const passCost = options.passCost ?? measurePassCost(line, defaultKnobs, start);
   const gradientOrdered = localSearch(problem, start, { ...options, order: 'gradient', seed: 0 });
   const randomOrdered = options.seeds.map((seed) =>
     localSearch(problem, start, { ...options, order: 'random', seed }),
   );
   const all = [gradientOrdered, ...randomOrdered];
-  // A level every search reached: the worst of their local optima.
-  const common = Math.min(...all.map((r) => r.profit));
-  const ninety = base + 0.9 * (common - base);
-  log('\n4. First-improvement local search from the same start (full evaluations):');
+  const best = Math.max(...all.map((r) => r.profit));
+  const levels = [0.5, 0.75, 0.85, 0.9];
+  const work = (r: SearchResult): (number | undefined)[] => [
+    ...levels.map((f) => workToReach(r, base + f * (best - base), passCost)),
+    workToReach(r, r.profit, passCost),
+    totalWork(r, passCost),
+  ];
+  const headings = [...levels.map((f) => `${String(f * 100)}%`), 'own opt.', 'in all'];
+  const cell = (x: number | undefined): string => (x === undefined ? '-' : fmt(x, 0)).padStart(9);
   log(
-    `   ${'order'.padEnd(22)} ${'optimum'.padStart(8)} ${'moves'.padStart(6)} ${'to 90%'.padStart(7)} ${'to ' + fmt(common, 0)} ${'in all'.padStart(7)}`,
+    `\n4. First-improvement local search from the same start. Work is in evaluation equivalents:\n` +
+      `   full evaluations, plus ${fmt(passCost, 1)} for each gradient pass (its cost here, measured). ` +
+      `The best optimum\n   any search found is ${fmt(best)}; the columns give the work to reach a ` +
+      "share of its gain, then each\n   search's own optimum, then all the work, the final round included.",
+  );
+  log(
+    `   ${'order'.padEnd(17)} ${'optimum'.padStart(8)} ${'moves'.padStart(6)}` +
+      headings.map((h) => h.padStart(9)).join(''),
   );
   all.forEach((r, i) => {
     const name = i === 0 ? 'gradient' : `random (seed ${String(options.seeds[i - 1])})`;
     log(
-      `   ${name.padEnd(22)} ${fmt(r.profit).padStart(8)} ${String(r.improvements).padStart(6)} ` +
-        `${String(evaluationsToReach(r, ninety)).padStart(7)} ${String(evaluationsToReach(r, common)).padStart(7)} ` +
-        String(r.evaluations).padStart(7) +
-        (r.gradientPasses ? `  + ${String(r.gradientPasses)} gradient passes` : ''),
+      `   ${name.padEnd(17)} ${fmt(r.profit).padStart(8)} ${String(r.improvements).padStart(6)}` +
+        work(r).map(cell).join(''),
     );
   });
-  const median = (xs: number[]): number => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-  const to90 = (r: SearchResult): number => evaluationsToReach(r, ninety) ?? r.evaluations;
-  log(
-    `   To 90% of the gain, gradient order needed ${String(to90(gradientOrdered))} evaluations; random order, ` +
-      `a median of ${String(median(randomOrdered.map(to90)))}.`,
-  );
+  const median = (xs: readonly (number | undefined)[]): number | undefined => {
+    const got = xs.filter((x) => x !== undefined).sort((a, b) => a - b);
+    // A search that never got there counts as slower than any that did.
+    return xs.length - got.length > xs.length / 2 ? undefined : got[Math.floor(xs.length / 2)];
+  };
+  const g = work(gradientOrdered);
+  const rs = randomOrdered.map(work);
+  log('   Gradient order against the median random search:');
+  headings.forEach((h, k) => {
+    const mine = g[k];
+    const theirs = median(rs.map((w) => w[k]));
+    const verdict =
+      mine === undefined
+        ? 'never got there'
+        : theirs === undefined || mine < theirs
+          ? `faster (${fmt(mine, 0)} against ${theirs === undefined ? 'never' : fmt(theirs, 0)})`
+          : `slower (${fmt(mine, 0)} against ${fmt(theirs, 0)})`;
+    log(`     ${h.padEnd(9)} ${verdict}`);
+  });
   log('   optimised windows (gradient order):');
   for (const w of gradientOrdered.schedule) {
     log(

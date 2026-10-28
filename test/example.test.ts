@@ -14,7 +14,13 @@ import {
   profit,
 } from '../examples/production-line/model.ts';
 import { flags, type Schedule } from '../examples/production-line/schedule.ts';
-import { Problem, rng } from '../examples/production-line/search.ts';
+import {
+  measurePassCost,
+  Problem,
+  rng,
+  totalWork,
+  workToReach,
+} from '../examples/production-line/search.ts';
 
 const small: Line = {
   ...defaultLine,
@@ -38,12 +44,22 @@ test('the walkthrough runs end to end and improves the schedule', () => {
     maxShift: 3,
     maxTransfer: 2,
     seeds: [1, 2],
+    passCost: 2.5,
     log: (l) => lines.push(l),
   });
   const start = new Problem(small, defaultKnobs).profit(smallSchedule);
   expect(r.gradientOrdered.profit).toBeGreaterThan(start);
   for (const x of r.randomOrdered) expect(x.profit).toBeGreaterThan(start);
   expect(r.gradientOrdered.gradientPasses).toBe(r.gradientOrdered.improvements + 1);
+  // Work counts every gradient pass at its cost, up to the point measured.
+  const g = r.gradientOrdered;
+  expect(totalWork(g, 2.5)).toBe(g.evaluations + 2.5 * g.gradientPasses);
+  const last = g.trace.at(-1)!;
+  expect(last.gradientPasses).toBe(g.improvements);
+  expect(workToReach(g, g.profit, 2.5)).toBe(last.evaluations + 2.5 * last.gradientPasses);
+  expect(workToReach(g, Infinity, 2.5)).toBeUndefined();
+  expect(lines.join('\n')).toMatch(/plus 2\.5 for each gradient pass/);
+  expect(lines.join('\n')).toMatch(/^ {5}in all {4}(faster|slower) \(/m);
   expect(lines.join('\n')).toMatch(/^5\. Forward mode/m);
   // Profit is linear in the price, so its derivative is the difference a unit of price makes.
   const at = (price: number): number =>
@@ -82,4 +98,10 @@ test('Problem.gradient is the same gradient, in the flags only', () => {
   expect(value).toBe(r.value);
   expect(Array.from(gradient)).toEqual(r.analytic);
   expect(r.ok).toBe(true);
+});
+
+test('the measured cost of a gradient pass is a plausible multiple of an evaluation', () => {
+  const cost = measurePassCost(small, defaultKnobs, smallSchedule, 5);
+  expect(cost).toBeGreaterThan(0.5);
+  expect(cost).toBeLessThan(50);
 });

@@ -76,6 +76,33 @@ export class Problem {
   }
 }
 
+/**
+ * What a gradient pass (one recording and one backward sweep) costs, in plain evaluations of the
+ * same schedule, measured here by timing both, interleaved, `rounds` times each. The fastest time
+ * of each is used: on a busy machine the slower runs measure the machine, not the code.
+ */
+export function measurePassCost(
+  line: Line,
+  knobs: Knobs<number>,
+  schedule: Schedule,
+  rounds = 25,
+): number {
+  const p = new Problem(line, knobs); // its counters are not the searches'
+  const pause = flags(line, schedule);
+  let plainBest = Infinity;
+  let passBest = Infinity;
+  for (let r = 0; r < rounds; r++) {
+    const t0 = performance.now();
+    p.profit(schedule);
+    const t1 = performance.now();
+    p.gradient(pause);
+    const t2 = performance.now();
+    plainBest = Math.min(plainBest, t1 - t0);
+    passBest = Math.min(passBest, t2 - t1);
+  }
+  return passBest / plainBest;
+}
+
 export interface RankedMove {
   readonly move: Move;
   /** First-order estimate of the change in profit. */
@@ -102,8 +129,12 @@ export interface SearchResult {
   /** Full evaluations including the final round that found no improving move. */
   readonly evaluations: number;
   readonly gradientPasses: number;
-  /** Profit after each improvement, with the number of full evaluations made by then. */
-  readonly trace: readonly { readonly evaluations: number; readonly profit: number }[];
+  /** Profit after each improvement, with the full evaluations and gradient passes made by then. */
+  readonly trace: readonly {
+    readonly evaluations: number;
+    readonly gradientPasses: number;
+    readonly profit: number;
+  }[];
 }
 
 export interface SearchOptions {
@@ -113,9 +144,22 @@ export interface SearchOptions {
   readonly maxTransfer: number;
 }
 
-/** Full evaluations a search had made when its profit first reached `profit`, if it did. */
-export function evaluationsToReach(result: SearchResult, profit: number): number | undefined {
-  return result.trace.find((p) => p.profit >= profit - 1e-9)?.evaluations;
+/**
+ * The work a search had done when its profit first reached `profit`, if it did, in evaluation
+ * equivalents: full evaluations plus gradient passes, each counted as `passCost` evaluations.
+ */
+export function workToReach(
+  result: SearchResult,
+  profit: number,
+  passCost: number,
+): number | undefined {
+  const at = result.trace.find((p) => p.profit >= profit - 1e-9);
+  return at && at.evaluations + passCost * at.gradientPasses;
+}
+
+/** All the work a search did, the final round that found nothing included, as in `workToReach`. */
+export function totalWork(result: SearchResult, passCost: number): number {
+  return result.evaluations + passCost * result.gradientPasses;
 }
 
 /**
@@ -132,10 +176,11 @@ export function localSearch(
   const startEvaluations = problem.evaluations;
   const startPasses = problem.gradientPasses;
   const spent = (): number => problem.evaluations - startEvaluations;
+  const passes = (): number => problem.gradientPasses - startPasses;
   let schedule = start;
   let best = problem.profit(schedule);
   let improvements = 0;
-  const trace = [{ evaluations: spent(), profit: best }];
+  const trace = [{ evaluations: spent(), gradientPasses: passes(), profit: best }];
 
   for (;;) {
     let moves: Move[];
@@ -159,7 +204,7 @@ export function localSearch(
         schedule = next;
         best = value;
         improvements++;
-        trace.push({ evaluations: spent(), profit: best });
+        trace.push({ evaluations: spent(), gradientPasses: passes(), profit: best });
         improved = true;
         break;
       }
@@ -172,7 +217,7 @@ export function localSearch(
     profit: best,
     improvements,
     evaluations: spent(),
-    gradientPasses: problem.gradientPasses - startPasses,
+    gradientPasses: passes(),
     trace,
   };
 }
