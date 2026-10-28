@@ -96,20 +96,20 @@ jvp(f, [3, 4], [1, 1]); //=> { value: 0.75, derivative: 0.25 - 3 / 16 }
 
 ## Reverse mode: `class Tape implements Arithmetic<Var>`
 
-| member                           | contract                                                                                                   |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `new Tape({ capacity? })`        | an empty tape; capacity in nodes, default 1024, doubles when full                                          |
-| `size`, `capacity`               | nodes recorded; nodes it can hold before growing                                                           |
-| `input(x)`, `inputs(xs)`         | leaves to differentiate with respect to                                                                    |
-| `constant(x)`                    | a leaf too; the name only says you do not care for its adjoint                                             |
-| `value(v)`                       | the value of a node                                                                                        |
-| `backward(output, seed = 1)`     | one sweep: afterwards `adjoint(v)` is `seed * d(output)/d(v)`. Throws if `output` is not on the tape       |
-| `vjp(outputs, weights)`          | one sweep seeded with every `weights[k]` at `outputs[k]`. Throws on mismatched lengths or a foreign output |
-| `adjoint(v)`                     | the adjoint from the last sweep; zero for nodes the output does not depend on                              |
-| `adjoints(vars, out?)`           | the adjoints of `vars` into a `Float64Array`                                                               |
-| `gradient(output, inputs, out?)` | `backward(output)` then `adjoints(inputs, out)`                                                            |
-| `clear()`                        | forget every node, keep the storage                                                                        |
-| `mark()`, `rewind(mark)`         | truncate back to a checkpoint, keeping the nodes before it. `rewind` throws if the mark is beyond the end  |
+| member                            | contract                                                                                                                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `new Tape({ capacity?, debug? })` | an empty tape; capacity in nodes, default 1024, doubles when full; `debug: true` checks every operand and throws at a plain number, a stale variable, another tape's, or a variable where a number belongs |
+| `size`, `capacity`                | nodes recorded; nodes it can hold before growing                                                                                                                                                           |
+| `input(x)`, `inputs(xs)`          | leaves to differentiate with respect to                                                                                                                                                                    |
+| `constant(x)`                     | a leaf too; the name only says you do not care for its adjoint                                                                                                                                             |
+| `value(v)`                        | the value of a node                                                                                                                                                                                        |
+| `backward(output, seed = 1)`      | one sweep: afterwards `adjoint(v)` is `seed * d(output)/d(v)`. Throws if `output` is not on the tape                                                                                                       |
+| `vjp(outputs, weights)`           | one sweep seeded with every `weights[k]` at `outputs[k]`. Throws on mismatched lengths or a foreign output                                                                                                 |
+| `adjoint(v)`                      | the adjoint from the last sweep; zero for nodes the output does not depend on                                                                                                                              |
+| `adjoints(vars, out?)`            | the adjoints of `vars` into a `Float64Array`                                                                                                                                                               |
+| `gradient(output, inputs, out?)`  | `backward(output)` then `adjoints(inputs, out)`                                                                                                                                                            |
+| `clear()`                         | forget every node, keep the storage                                                                                                                                                                        |
+| `mark()`, `rewind(mark)`          | truncate back to a checkpoint, keeping the nodes before it. `rewind` throws if the mark is beyond the end                                                                                                  |
 
 Sweeps leave the tape unchanged: sweep it as often as you like, from different outputs.
 
@@ -120,13 +120,13 @@ neither is a `Dual`. `Mark` is a branded tape length.
 
 ## Forward mode: `class Forward implements Arithmetic<Dual>`
 
-| member                       | contract                                                 |
-| ---------------------------- | -------------------------------------------------------- |
-| `new Forward({ capacity? })` | an empty context                                         |
-| `input(x, tangent)`          | an input with its component of the direction             |
-| `constant(x)`                | tangent 0                                                |
-| `value(d)`, `tangent(d)`     | the value, and the derivative along the seeded direction |
-| `size`, `clear()`            | values created; forget them                              |
+| member                               | contract                                                 |
+| ------------------------------------ | -------------------------------------------------------- |
+| `new Forward({ capacity?, debug? })` | an empty context; `debug` as for `Tape`                  |
+| `input(x, tangent)`                  | an input with its component of the direction             |
+| `constant(x)`                        | tangent 0                                                |
+| `value(d)`, `tangent(d)`             | the value, and the derivative along the seeded direction |
+| `size`, `clear()`                    | values created; forget them                              |
 
 ## Checking: `finiteDifference`, `checkGradient`, `DEFAULT_STEP`
 

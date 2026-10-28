@@ -15,6 +15,7 @@ Instructions for agents (and people) changing this library. Users of the library
 | `src/convenience.ts`        | `evaluate`, `gradient`, `jvp`                                                                      |
 | `src/check.ts`              | `finiteDifference`, `checkGradient`                                                                |
 | `src/capacity.ts`           | the `capacity` option check shared by `Tape` and `Forward`                                         |
+| `src/debug.ts`              | the opt-in debug mode: checked, epoch-tagged handles for one `Tape` or `Forward`                   |
 | `src/index.ts`              | the public API: everything exported from the package root                                          |
 | `test/`                     | Vitest suites, helpers in `test/support/`; `invariants.test.ts` reads the source itself            |
 | `bench/`                    | tinybench workloads (`workloads.ts`), the measurement (`measure.ts`), the A/B comparison (`ab.ts`) |
@@ -49,6 +50,12 @@ These are what the library promises; every change keeps them.
 6. **Subgradient conventions are part of the contract** (table in `src/primitives.ts` and the
    README). Changing one is a breaking change.
 7. **No runtime dependencies.** `dependencies` stays empty.
+8. **A variable is a number at run time, and the library never tells them apart by `typeof` or by
+   value**; neither may examples or docs. A user who did so (lifting "numbers" with
+   `typeof x === 'number'`) got every gradient silently 0. The plain-number operations (`addc`,
+   `mulc`, ...) take numbers as their own parameters, and debug mode (`src/debug.ts`) is the run-time
+   check: it wraps the methods of that one instance only, so a tape without `debug` runs the
+   class's code unchanged. Keep it that way: no `if (debug)` on the hot paths.
 
 ## Adding a primitive, end to end
 

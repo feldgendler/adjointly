@@ -5,6 +5,7 @@
 Rules for code that this library differentiates:
 
 - Write the function generic in `T`: `function f<T>(A: Arithmetic<T>, xs: readonly T[]): T`.
+- Never tell a variable from a number with `typeof x === 'number'` or by value: a `Var`/`Dual` is a number at run time and passes, so every variable would become a constant and every gradient 0. Keep them in separate places. To find misuse, run once with `new Tape({ debug: true })`, which throws at any operand that is not a live variable of that tape, and at a variable where a number belongs.
 - Every operation on a differentiable value goes through `A`: `A.add`, `A.mul`, `A.exp`, never `+`, `*` or `Math.*`. `Var`/`Dual` are numbers at run time, so the mistake type-checks and is silent.
 - Numbers enter through `A.constant(c)`, or better as the number operand of `addc`/`subc`/`csub`/`mulc`/`divc`/`cdiv`/`powc` (one tape node instead of two), and leave through `A.value(x)`. A number taken out with `A.value` and fed back with `A.constant` carries no derivative.
 - Branching on `A.value(x)` is fine; the derivative is that of the branch taken.

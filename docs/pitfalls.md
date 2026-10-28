@@ -1,6 +1,45 @@
 # Pitfalls
 
 Each of these gives a wrong derivative without an error. Most are invisible to the type checker.
+When a gradient looks wrong, run once with `new Tape({ debug: true })` (or `new Forward({ debug:
+true })`): it checks every operand and throws at the first misuse it can see.
+
+## Telling variables from numbers with `typeof`
+
+**Never tell a variable from a plain number by `typeof`, or by its value.** A `Var` (or `Dual`) is a
+number at run time, so `typeof x === 'number'` is true for every variable. Code that uses such a test
+to turn "numbers" into constants turns every variable into a constant too, and every gradient comes
+out exactly 0, silently:
+
+```ts
+import { type Arithmetic, gradient, Tape, type Var } from 'adjointly';
+
+// Wrong: meant to lift plain numbers into constants and pass variables through.
+function lift<T>(A: Arithmetic<T>, v: T | number): T {
+  return typeof v === 'number' ? A.constant(v) : v;
+}
+gradient((A, [x]) => A.mul(lift(A, x), lift(A, 2)), [3]).gradient; //=> [0]
+
+// Debug mode refuses a variable where a number belongs.
+const t = new Tape({ debug: true });
+const x: Var = t.input(3);
+let message = '';
+try {
+  lift(t, x);
+} catch (e) {
+  message = (e as Error).message.split(',')[0]!;
+}
+message; //=> 'Tape.constant: argument 1 is a variable'
+```
+
+Keep variables and numbers in separate places (separate parameters, separate arrays, a field that
+says which), and pass numbers to the plain-number operations, which take them as such:
+
+```ts
+import { gradient } from 'adjointly';
+
+gradient((A, [x]) => A.mulc(x, 2), [3]).gradient; //=> [2]
+```
 
 ## Arithmetic operators on a `Var`
 

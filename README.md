@@ -122,7 +122,7 @@ min, max, sin, cos, tanh, sigmoid, softplus`; and, for a plain-number operand `c
 
 **Reverse mode: `class Tape implements Arithmetic<Var>`**
 
-- `new Tape({ capacity? })`; `size`, `capacity`
+- `new Tape({ capacity?, debug? })`; `size`, `capacity`
 - `input(x): Var`, `inputs(xs): Var[]` (a tuple for a literal), `constant(x): Var`, `value(v): number`
 - `backward(output, seed = 1)`, `vjp(outputs, weights)`
 - `adjoint(v): number`, `adjoints(vars, out?): Float64Array`,
@@ -131,7 +131,7 @@ min, max, sin, cos, tanh, sigmoid, softplus`; and, for a plain-number operand `c
 
 **Forward mode: `class Forward implements Arithmetic<Dual>`**
 
-- `new Forward({ capacity? })`; `size`
+- `new Forward({ capacity?, debug? })`; `size`
 - `input(x, tangent): Dual`, `constant(x): Dual`, `value(d): number`, `tangent(d): number`
 - `clear()`
 
@@ -228,7 +228,10 @@ before they cancel. [docs/concepts.md](docs/concepts.md#the-zero-rule) has the d
 - No GPU or WASM backend; this is plain JavaScript on `Float64Array`s.
 - Not symbolic: the tape is a record of one evaluation, valid at one point.
 - A `Var` is only checked by the type system, not at run time: using one from another tape, or
-  after `clear()` or `rewind()` past it, silently reads the wrong node.
+  after `clear()` or `rewind()` past it, silently reads the wrong node. `new Tape({ debug: true })`
+  checks every operand and throws instead, at some cost in speed.
+- A `Var` is a number at run time, so `typeof x === 'number'` cannot tell it from a number; see
+  rule 1 of "For AI agents" below.
 - Operations on values outside a primitive's domain produce whatever IEEE arithmetic does
   (`log(-1)` is `NaN`), in value and derivative alike.
 
@@ -254,35 +257,42 @@ A full gradient costs about two and a half plain evaluations, whatever the numbe
 Rules for writing code that this library differentiates correctly. They are short because each
 one is absolute.
 
-1. **Route every operation on a differentiable value through the arithmetic object.**
+1. **Never tell a variable from a plain number by `typeof x === 'number'` or by its value.** A `Var`
+   is a number at run time and passes that test, so code that lifts "numbers" into constants that
+   way turns every variable into a constant, and every gradient is silently 0. Keep variables and
+   numbers in separate places, and give numbers to `addc`, `mulc` and the other plain-number
+   operations. When gradients look wrong, run once with `new Tape({ debug: true })`, which throws at
+   the first operand that is not a live variable of that tape, and at a variable where a number
+   belongs.
+2. **Route every operation on a differentiable value through the arithmetic object.**
    `A.add(x, y)`, never `x + y`; `A.exp(x)`, never `Math.exp(x)`. `Var` and `Dual` are numbers
    underneath, so `x + y` type-checks and silently adds two _indices_. There is no runtime check.
-2. **Write the function generic in `T`**, as `function f<T>(A: Arithmetic<T>, xs: readonly T[]): T`,
+3. **Write the function generic in `T`**, as `function f<T>(A: Arithmetic<T>, xs: readonly T[]): T`,
    and run it with `plain`, a `Tape` or a `Forward`. Do not write a separate plain version; the
    generic one evaluated with `plain` gives bit-for-bit the same value.
-3. **Numbers go in through `A.constant(c)`, or as the number operand of `addc`, `subc`, `csub`,
+4. **Numbers go in through `A.constant(c)`, or as the number operand of `addc`, `subc`, `csub`,
    `mulc`, `divc`, `cdiv`, `powc`.** Data, hyperparameters, literals: all constants, with derivative
    zero. Prefer the number-operand operations: `A.mulc(x, 2)` is one tape node,
    `A.mul(x, A.constant(2))` two, with the same value and derivative.
-4. **Numbers come out through `A.value(x)`, and they are constants from then on.**
+5. **Numbers come out through `A.value(x)`, and they are constants from then on.**
    `A.constant(A.value(x))` cuts the derivative: `A.mul(x, A.constant(A.value(x)))` has derivative
    `x`, not `2x`. Use `A.value` only to branch, to log, or to return a result.
-5. **Branching on `A.value(x)` is fine; the gradient is that of the branch taken.** At the exact
+6. **Branching on `A.value(x)` is fine; the gradient is that of the branch taken.** At the exact
    boundary it is the taken branch's one-sided derivative. Use `A.abs`, `A.max`, `A.min` for kinks
    rather than hand-written branches, so the documented subgradient applies.
-6. **Use the stable primitives**: `A.sigmoid`, `A.softplus`, `A.log1p`, `A.expm1`, `A.square`,
+7. **Use the stable primitives**: `A.sigmoid`, `A.softplus`, `A.log1p`, `A.expm1`, `A.square`,
    and the composites `logsumexp` and `softmax`. Never assemble them from `exp` and `log`.
-7. **Keep domains explicit.** `A.log`, `A.sqrt`, `A.div`, `A.pow` with a non-positive base give
+8. **Keep domains explicit.** `A.log`, `A.sqrt`, `A.div`, `A.pow` with a non-positive base give
    `NaN` or `Infinity` outside their domain, in value and gradient. Clamp or reparametrise first
    (`A.softplus(raw)` for a positive parameter).
-8. **In hot loops, reuse one `Tape`** and call `clear()` (or `rewind(mark)`) per evaluation; never
+9. **In hot loops, reuse one `Tape`** and call `clear()` (or `rewind(mark)`) per evaluation; never
    construct a tape per evaluation. Pass an output `Float64Array` to `tape.gradient`.
-9. **A `Var` dies with its tape's contents.** After `clear()`, or `rewind(m)` to before it was
-   made, a `Var` refers to nothing (or to a newer node). Keep no `Var`s across evaluations except
-   those made before a `mark()` you rewind to.
-10. **Verify with `checkGradient(f, at)`** at a few random points away from kinks and branch
+10. **A `Var` dies with its tape's contents.** After `clear()`, or `rewind(m)` to before it was
+    made, a `Var` refers to nothing (or to a newer node). Keep no `Var`s across evaluations except
+    those made before a `mark()` you rewind to.
+11. **Verify with `checkGradient(f, at)`** at a few random points away from kinks and branch
     boundaries, in a test, whenever you write a nontrivial function.
-11. **Give a fixed number of inputs a tuple type**, `[x, y]: readonly [T, T]` (or
+12. **Give a fixed number of inputs a tuple type**, `[x, y]: readonly [T, T]` (or
     `ScalarFunction<[number, number]>`), so they need no `!` under `noUncheckedIndexedAccess`; with
     a `readonly T[]` of any length, index with `!` and annotate an accumulator seeded from it:
     `let s: T = xs[0]!`.
