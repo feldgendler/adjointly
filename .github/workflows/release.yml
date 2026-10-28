@@ -33,7 +33,11 @@ jobs:
         with:
           # Trusted publishing needs npm 11.5.1 or later, which Node 24 and later ship.
           node-version: 26
-          cache: npm
+          # No dependency cache in a job that can publish: a cache written by any other workflow
+          # run could be poisoned (setup-node's own advice since v7). v5 and later cache
+          # automatically when package.json names a packageManager, so it is turned off
+          # explicitly.
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
       - name: Refuse to publish a private package
         run: |
