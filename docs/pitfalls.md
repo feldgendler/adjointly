@@ -13,7 +13,7 @@ import { Tape } from 'adjointly';
 const t = new Tape();
 const x = t.input(10);
 const y = t.input(20);
-// Wrong: `x + y` adds the indices 0 and 1. Right:
+// Wrong: `x + y` adds the nodes' indices (1 and 2: slot 0 is reserved). Right:
 t.value(t.add(x, y)); //=> 30
 ```
 

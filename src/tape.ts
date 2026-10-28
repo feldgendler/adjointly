@@ -48,9 +48,9 @@ const SINK = 0;
  * every node in a single backward sweep.
  *
  * Each node stores its value, up to two parent indices and the local partial derivatives with
- * respect to them, computed when the node is recorded. The storage is five typed arrays that
- * double when full, so recording does not allocate once the tape has grown to the size of the
- * computation, and a tape reused across evaluations (via {@link Tape.clear} or
+ * respect to them, computed when the node is recorded, and its adjoint: six typed arrays, 40
+ * bytes a node. They double when full, so recording does not allocate once the tape has grown to
+ * the size of the computation, and a tape reused across evaluations (via {@link Tape.clear} or
  * {@link Tape.rewind}) never allocates again.
  *
  * The backward sweep visits nodes from the output down to the first, adding

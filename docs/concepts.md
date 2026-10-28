@@ -53,7 +53,8 @@ for i from output down to 1:
 After the sweep `adj[v]` is d(output)/d(v) for every node `v` the output depends on. One sweep
 gives the derivative with respect to every input at once, which is why reverse mode is the right
 tool for a scalar loss of many parameters. The cost is a small constant times one evaluation,
-independent of the number of inputs; the memory is five numbers per node.
+independent of the number of inputs; the memory is six numbers per node, counting its adjoint
+(40 bytes: four 8-byte floats and two 4-byte indices).
 
 `vjp(outputs, weights)` seeds several outputs in one sweep, giving the gradient of
 `sum_k weights[k] * outputs[k]`; `backward` is the one-output case.

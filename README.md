@@ -218,9 +218,9 @@ before they cancel. [docs/concepts.md](docs/concepts.md#the-zero-rule) has the d
 
 ## Performance
 
-A tape node is five typed-array slots (value, two parent indices, two partials). The arrays double
-when full, so once a tape has grown to the size of a computation and is reused with `clear()` or
-`rewind()`, recording allocates nothing. The backward sweep is one tight loop over those arrays.
+A tape node is six typed-array slots (value, two parent indices, two partials and its adjoint:
+40 bytes). The arrays double when full, so once a tape has grown to the size of a computation and
+is reused with `clear()` or `rewind()`, recording allocates nothing. The backward sweep is one tight loop over those arrays.
 `npm run bench` times two workloads (a small neural network's loss over 1000 samples, and a
 transcendental-heavy function of 20 000 inputs, both about 1.5 to 2 × 10⁵ nodes). On an
 Apple-silicon laptop with Node 26, relative to evaluating the same function on plain numbers
