@@ -202,7 +202,7 @@ const agree = (a: number, b: number): boolean =>
 test('reverse and forward mode agree at special points, NaN for NaN', () => {
   fc.assert(
     fc.property(
-      expr.filter((e) => countInputs(e) > 0),
+      expr.filter((e) => countInputs(e) > 0 && countInputs(e) <= 8), // the pool holds 8
       fc.array(special, { minLength: 8, maxLength: 8 }),
       (e, pool) => {
         const at = pool.slice(0, countInputs(e));
