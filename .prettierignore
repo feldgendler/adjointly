@@ -1,0 +1,8 @@
+dist/
+coverage/
+reports/
+temp/
+.stryker-tmp/
+etc/*.api.md
+CHANGELOG.md
+package-lock.json

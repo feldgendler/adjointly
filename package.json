@@ -1,0 +1,89 @@
+{
+  "name": "adjointly",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dependency-free automatic differentiation for scalar float64 programs in TypeScript: reverse mode on a typed-array tape and forward mode, from one function written once.",
+  "keywords": [
+    "autodiff",
+    "automatic-differentiation",
+    "gradient",
+    "reverse-mode",
+    "forward-mode",
+    "backpropagation",
+    "optimization",
+    "typescript"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/feldgendler/adjointly.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "docs",
+    "llms.txt",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "api:check": "api-extractor run",
+    "api:update": "npm run build && api-extractor run --local",
+    "publint": "publint --strict",
+    "attw": "attw --pack . --profile esm-only",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run publint && npm run attw && npm run api:check",
+    "mutate": "stryker run",
+    "bench": "node bench/run.ts",
+    "bench:compare": "node bench/run.ts --compare",
+    "bench:update": "node bench/run.ts --update",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish",
+    "prepublishOnly": "npm run check",
+    "example": "node examples/production-line/run.ts"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^3.0.3",
+    "@eslint/js": "^10.0.1",
+    "@microsoft/api-extractor": "^7.60.0",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/typescript-checker": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "eslint": "^10.13.0",
+    "eslint-plugin-tsdoc": "^0.5.4",
+    "fast-check": "^4.10.2",
+    "prettier": "^3.9.10",
+    "publint": "^0.3.25",
+    "tinybench": "^6.2.2",
+    "tsdown": "^0.23.3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.0.5"
+  }
+}
