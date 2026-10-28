@@ -4,6 +4,7 @@
  * `//=> EXPR` lines asserted. See test/support/doc-examples.ts for the conventions.
  */
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
@@ -19,23 +20,14 @@ import {
 const examples = docExamples();
 
 const valueExports = Object.keys(lib).sort();
+// The type-only exports, from the committed API report (which `npm run api:check` keeps current).
 const typeExports = [
-  'Arithmetic',
-  'BinaryName',
-  'BinaryPrimitive',
-  'CheckGradientOptions',
-  'Dual',
-  'ForwardOptions',
-  'GradientCheck',
-  'GradientResult',
-  'JvpResult',
-  'Mark',
-  'ScalarFunction',
-  'TapeOptions',
-  'UnaryName',
-  'UnaryPrimitive',
-  'Var',
-];
+  ...readFileSync(join(root, 'etc', 'adjointly.api.md'), 'utf8').matchAll(
+    /^export (?:type|interface) (\w+)/gm,
+  ),
+]
+  .map((m) => m[1]!)
+  .sort();
 
 const importsLib = (code: string): boolean => /from\s+['"]adjointly['"]/.test(code);
 
@@ -47,6 +39,12 @@ function asModule(code: string): { text: string; offset: number } {
     `${typeExports.map((t) => `type ${t}`).join(', ')} } from 'adjointly';`;
   return { text: `${prelude}\n${code}\nexport {};\n`, offset: 1 };
 }
+
+test('the type exports come from the API report', () => {
+  expect(typeExports).toContain('Arithmetic');
+  expect(typeExports).toContain('Var');
+  expect(typeExports.some((t) => valueExports.includes(t))).toBe(false);
+});
 
 test('there are doc examples in every kind of source', () => {
   const files = new Set(examples.map((e) => e.file.split('/')[0]));
