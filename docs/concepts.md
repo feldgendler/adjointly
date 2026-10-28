@@ -99,11 +99,13 @@ What the tape cannot see is a dependence that goes through `A.value`: a number r
 back in with `A.constant` is a constant. That is the right behaviour for a branch condition or a
 step size, and the wrong one anywhere a derivative should flow (see [pitfalls.md](pitfalls.md)).
 
-## Zero means nothing flows
+## The zero rule
 
-A node whose adjoint is exactly zero passes nothing to its arguments, and in forward mode a term
-whose tangent is exactly zero is skipped. Without that rule, `0 * Infinity` would turn an infinite
-partial on an unused path into `NaN`:
+Every term of the chain rule is a product of two factors: a local partial, and the adjoint flowing
+back into the node (reverse mode) or the tangent flowing forward out of an argument (forward mode).
+**If either factor is exactly 0, the term is 0**, even when the other factor is infinite or `NaN`.
+Both modes apply the rule. Without it, `0 * Infinity` would turn an infinite partial on a path that
+does not matter into `NaN`:
 
 ```ts
 import { type Arithmetic, gradient, jvp } from 'adjointly';
@@ -113,5 +115,28 @@ function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
   return A.add(A.mul(A.constant(0), A.sqrt(x!)), y!);
 }
 gradient(f, [0, 1]).gradient; //=> [0, 1]
+jvp(f, [0, 1], [1, 0]).derivative; //=> 0
 jvp(f, [0, 1], [0, 1]).derivative; //=> 1
+
+// The zero comes before the singular point: 0 * x is 0 for every x, so sqrt(0 * x) is constant.
+function g<T>(A: Arithmetic<T>, [x]: readonly T[]): T {
+  return A.sqrt(A.mul(A.constant(0), x!));
+}
+gradient(g, [1]).gradient; //=> [0]
+jvp(g, [1], [1]).derivative; //=> 0
 ```
+
+The two modes multiply the same partials, grouped differently: forward mode from the inputs
+towards the output, reverse mode from the output back. The rule makes them agree, but two things
+can still tell the groupings apart:
+
+- **Cancellation.** The rule looks at factors, not sums. In `sqrt(x - x)` the tangent of `x - x`
+  is `1 - 1 = 0` before it meets the infinite partial of `sqrt` at 0, so forward mode gives 0;
+  reverse mode multiplies the infinite partial into each of the two terms first and adds
+  `∞ - ∞ = NaN`.
+- **Underflow and overflow.** A product of tiny (or huge) finite partials can round to 0 (or
+  overflow to `Infinity`) in one grouping and not in the other, and a 0 produced that way then
+  annihilates whatever it meets.
+
+Where neither happens, the modes agree, `NaN` for `NaN`; a property test checks this on random
+expressions at 0, -0, ±Infinity, `NaN` and subnormal inputs.

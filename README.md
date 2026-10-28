@@ -183,10 +183,14 @@ Where a primitive has no derivative, it uses a fixed, documented one:
 | `pow(a, b)`              | `b = 0` | `∂/∂a = 0` (so `0^0` does not give `0 · ∞`)                             |
 | `sqrt(x)`                | `x = 0` | `+∞`, the true one-sided limit                                          |
 
-Two propagation rules complete the picture: in reverse mode a node whose adjoint is exactly zero
-passes nothing back, and in forward mode a term whose tangent is exactly zero is skipped. So an
-infinite or `NaN` partial on a path that does not matter (a `sqrt(0)` multiplied by zero, an input
-the direction does not move) never turns into `0 · ∞ = NaN`.
+One rule completes the picture, the **zero rule**: every term of the chain rule is a local partial
+times an incoming adjoint (reverse mode) or tangent (forward mode), and if either factor is exactly
+0 the term is 0, even when the other is infinite or `NaN`. So an infinite partial on a path that
+does not matter (a `sqrt(0)` multiplied by zero, the untaken side of a `max`, an input the
+direction does not move) never turns into `0 · ∞ = NaN`, and both modes give the same answer.
+The rule looks at factors, not sums, so it cannot see a cancellation: `sqrt(x - x)` has derivative
+0 in forward mode and `NaN` in reverse mode, which multiplies the infinite partial into each term
+before they cancel. [docs/concepts.md](docs/concepts.md#the-zero-rule) has the details.
 
 ## Numerical stability
 
@@ -282,8 +286,9 @@ More: [docs/pitfalls.md](docs/pitfalls.md), and [llms.txt](llms.txt) for a compa
   uses its functions directly; `Tape` and `Forward` have one method per primitive, each calling its
   own table entry. A single generic recording helper taking the table entry as an argument was
   about 2× slower, because its call sites see every primitive and V8 cannot inline them.
-- **Zero adjoints and zero tangents propagate nothing**, rather than multiplying through. It costs
-  one comparison per node and removes the `0 · ∞ = NaN` failures of unused singular paths.
+- **The zero rule** (a zero partial or a zero adjoint or tangent makes the term zero) costs a
+  comparison per term and removes the `0 · ∞ = NaN` failures of unused singular paths, in both
+  modes alike, so they agree wherever their different groupings of the chain rule cannot matter.
 - **The composites need no rules of their own.** `logsumexp` and `softmax` are recorded as ordinary
   primitives; the max-shift is a constant, which is exact because the shift cancels.
 - **`gradient()` returns `number[]`, `Tape.gradient()` a `Float64Array`.** The convenience is for

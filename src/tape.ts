@@ -37,8 +37,8 @@ export interface TapeOptions {
 
 /**
  * Slot 0 of every array is a sink, not a node: leaves name it as both parents, and unary nodes as
- * their second, with a zero partial. The backward sweep can then add into both parents of every
- * node without testing for a missing one; whatever lands in the sink is never read.
+ * their second, always with a zero partial. Every parent index is therefore a valid slot, and the
+ * backward sweep's zero rule never writes to the sink.
  */
 const SINK = 0;
 
@@ -54,9 +54,9 @@ const SINK = 0;
  * {@link Tape.rewind}) never allocates again.
  *
  * The backward sweep visits nodes from the output down to the first, adding
- * `partial * adjoint(child)` into each parent's adjoint. A node whose adjoint is exactly zero
- * passes nothing on, even if its partials are infinite or `NaN`, so an unused `sqrt(0)` or
- * `log(0)` does not poison the gradient.
+ * `partial * adjoint(child)` into each parent's adjoint, under the zero rule: if the partial or
+ * the adjoint is exactly 0 the term is 0, even when the other is infinite or `NaN`, so an unused
+ * `sqrt(0)` or `log(0)` does not poison the gradient.
  *
  * @example
  * ```ts
@@ -268,20 +268,24 @@ export class Tape implements Arithmetic<Var> {
       pb = this.pb,
       da = this.da,
       db = this.db;
-    // Leaves (inputs and constants) are skipped although adding their zero partials into the sink
-    // would be harmless: every leaf would read and write the same slot, a chain of dependent
-    // memory operations that made the whole gradient about 25% slower on a constant-heavy loss.
-    // Both that test and visiting the sink itself (i >= 0) change no result, only the speed.
+    // A leaf's partials are 0 and so is a unary node's second, so the zero rule below also keeps
+    // every write out of the sink.
     // Stryker disable next-line EqualityOperator: also visiting the sink changes nothing read.
     for (let i = top; i > SINK; i--) {
+      // 0 times anything is 0: a zero adjoint or a zero partial passes nothing on, even where the
+      // other factor is infinite or NaN. Forward mode applies the same rule (`times` there).
       const g = adj[i]!;
       if (g === 0) continue;
-      const a = pa[i]!;
-      // Stryker disable next-line ConditionalExpression,EqualityOperator: skipping leaves is for speed only.
-      if (a === SINK) continue;
-      const b = pb[i]!;
-      adj[a] = adj[a]! + da[i]! * g;
-      adj[b] = adj[b]! + db[i]! * g;
+      const dA = da[i]!;
+      if (dA !== 0) {
+        const a = pa[i]!;
+        adj[a] = adj[a]! + dA * g;
+      }
+      const dB = db[i]!;
+      if (dB !== 0) {
+        const b = pb[i]!;
+        adj[b] = adj[b]! + dB * g;
+      }
     }
   }
 

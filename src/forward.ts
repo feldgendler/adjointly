@@ -16,6 +16,14 @@ declare const dualBrand: unique symbol;
  */
 export type Dual = number & { readonly [dualBrand]: 'adjointly.Dual' };
 
+/**
+ * One term of the chain rule, `d * t`, except that a zero factor makes the term zero even when the
+ * other factor is infinite or `NaN`. The tape's backward sweep applies the same rule.
+ */
+function times(d: number, t: number): number {
+  return d === 0 || t === 0 ? 0 : d * t;
+}
+
 /** Options for constructing a {@link Forward}. */
 export interface ForwardOptions {
   /** Initial capacity in values (default 1024); storage doubles whenever it fills. */
@@ -29,8 +37,8 @@ export interface ForwardOptions {
  * output at once, with no backward sweep and nothing kept but a value and a tangent per slot.
  *
  * Tangents propagate as `t(y) = da * t(a) + db * t(b)` using the same partials the {@link Tape}
- * records. A term whose tangent is exactly zero is skipped, mirroring the tape's rule that a zero
- * adjoint passes nothing on, so an infinite partial such as `sqrt` at `0` does not turn a zero
+ * records, under the same zero rule: if a partial or a tangent is exactly 0 the term is 0, even when
+ * the other is infinite or `NaN`, so an infinite partial such as `sqrt` at `0` does not turn a zero
  * tangent into `NaN`.
  *
  * Use forward mode when there are few inputs (or one direction) and many outputs; use the tape
@@ -109,8 +117,8 @@ export class Forward implements Arithmetic<Dual> {
   }
 
   // One method per primitive, each calling its own table entry directly, so every call site is
-  // monomorphic and inlined; see the same note in tape.ts. neg, add, sub, min and max have finite
-  // constant partials, so they need no zero-tangent test: a zero tangent already contributes 0.
+  // monomorphic and inlined; see the same note in tape.ts. neg, add and sub multiply directly:
+  // their partials are always 1 or -1, never 0, so `times` would change nothing.
 
   /** {@inheritDoc Arithmetic.neg} */
   neg(a: Dual): Dual {
@@ -144,10 +152,7 @@ export class Forward implements Arithmetic<Dual> {
     const ta = this.tan[a]!;
     const tb = this.tan[b]!;
     const y = P.mul.value(x, z);
-    let t = 0;
-    if (ta !== 0) t = P.mul.da(x, z, y) * ta;
-    if (tb !== 0) t += P.mul.db(x, z, y) * tb;
-    return this.push(y, t);
+    return this.push(y, times(P.mul.da(x, z, y), ta) + times(P.mul.db(x, z, y), tb));
   }
   /** {@inheritDoc Arithmetic.div} */
   div(a: Dual, b: Dual): Dual {
@@ -156,59 +161,56 @@ export class Forward implements Arithmetic<Dual> {
     const ta = this.tan[a]!;
     const tb = this.tan[b]!;
     const y = P.div.value(x, z);
-    let t = 0;
-    if (ta !== 0) t = P.div.da(x, z, y) * ta;
-    if (tb !== 0) t += P.div.db(x, z, y) * tb;
-    return this.push(y, t);
+    return this.push(y, times(P.div.da(x, z, y), ta) + times(P.div.db(x, z, y), tb));
   }
   /** {@inheritDoc Arithmetic.recip} */
   recip(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.recip.value(x);
-    return this.push(y, ta === 0 ? 0 : P.recip.deriv(x, y) * ta);
+    return this.push(y, times(P.recip.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.square} */
   square(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.square.value(x);
-    return this.push(y, ta === 0 ? 0 : P.square.deriv(x, y) * ta);
+    return this.push(y, times(P.square.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.sqrt} */
   sqrt(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sqrt.value(x);
-    return this.push(y, ta === 0 ? 0 : P.sqrt.deriv(x, y) * ta);
+    return this.push(y, times(P.sqrt.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.exp} */
   exp(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.exp.value(x);
-    return this.push(y, ta === 0 ? 0 : P.exp.deriv(x, y) * ta);
+    return this.push(y, times(P.exp.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.expm1} */
   expm1(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.expm1.value(x);
-    return this.push(y, ta === 0 ? 0 : P.expm1.deriv(x, y) * ta);
+    return this.push(y, times(P.expm1.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.log} */
   log(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.log.value(x);
-    return this.push(y, ta === 0 ? 0 : P.log.deriv(x, y) * ta);
+    return this.push(y, times(P.log.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.log1p} */
   log1p(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.log1p.value(x);
-    return this.push(y, ta === 0 ? 0 : P.log1p.deriv(x, y) * ta);
+    return this.push(y, times(P.log1p.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.pow} */
   pow(a: Dual, b: Dual): Dual {
@@ -217,17 +219,14 @@ export class Forward implements Arithmetic<Dual> {
     const ta = this.tan[a]!;
     const tb = this.tan[b]!;
     const y = P.pow.value(x, z);
-    let t = 0;
-    if (ta !== 0) t = P.pow.da(x, z, y) * ta;
-    if (tb !== 0) t += P.pow.db(x, z, y) * tb;
-    return this.push(y, t);
+    return this.push(y, times(P.pow.da(x, z, y), ta) + times(P.pow.db(x, z, y), tb));
   }
   /** {@inheritDoc Arithmetic.abs} */
   abs(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.abs.value(x);
-    return this.push(y, ta === 0 ? 0 : P.abs.deriv(x, y) * ta);
+    return this.push(y, times(P.abs.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.min} */
   min(a: Dual, b: Dual): Dual {
@@ -236,7 +235,7 @@ export class Forward implements Arithmetic<Dual> {
     const ta = this.tan[a]!;
     const tb = this.tan[b]!;
     const y = P.min.value(x, z);
-    return this.push(y, P.min.da(x, z, y) * ta + P.min.db(x, z, y) * tb);
+    return this.push(y, times(P.min.da(x, z, y), ta) + times(P.min.db(x, z, y), tb));
   }
   /** {@inheritDoc Arithmetic.max} */
   max(a: Dual, b: Dual): Dual {
@@ -245,41 +244,41 @@ export class Forward implements Arithmetic<Dual> {
     const ta = this.tan[a]!;
     const tb = this.tan[b]!;
     const y = P.max.value(x, z);
-    return this.push(y, P.max.da(x, z, y) * ta + P.max.db(x, z, y) * tb);
+    return this.push(y, times(P.max.da(x, z, y), ta) + times(P.max.db(x, z, y), tb));
   }
   /** {@inheritDoc Arithmetic.sin} */
   sin(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sin.value(x);
-    return this.push(y, ta === 0 ? 0 : P.sin.deriv(x, y) * ta);
+    return this.push(y, times(P.sin.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.cos} */
   cos(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.cos.value(x);
-    return this.push(y, ta === 0 ? 0 : P.cos.deriv(x, y) * ta);
+    return this.push(y, times(P.cos.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.tanh} */
   tanh(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.tanh.value(x);
-    return this.push(y, ta === 0 ? 0 : P.tanh.deriv(x, y) * ta);
+    return this.push(y, times(P.tanh.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.sigmoid} */
   sigmoid(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.sigmoid.value(x);
-    return this.push(y, ta === 0 ? 0 : P.sigmoid.deriv(x, y) * ta);
+    return this.push(y, times(P.sigmoid.deriv(x, y), ta));
   }
   /** {@inheritDoc Arithmetic.softplus} */
   softplus(a: Dual): Dual {
     const x = this.val[a]!;
     const ta = this.tan[a]!;
     const y = P.softplus.value(x);
-    return this.push(y, ta === 0 ? 0 : P.softplus.deriv(x, y) * ta);
+    return this.push(y, times(P.softplus.deriv(x, y), ta));
   }
 }

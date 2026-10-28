@@ -40,8 +40,11 @@ These are what the library promises; every change keeps them.
    own table entry. A shared helper that takes the table entry as a parameter looks tidier and is
    about 2x slower (its call sites see every primitive, so V8 cannot inline them). Do not
    "refactor" it back.
-5. **Zero propagates nothing**: the backward sweep skips nodes whose adjoint is exactly 0, and
-   forward mode skips terms whose tangent is exactly 0, so `0 * Infinity` never makes a `NaN`.
+5. **The zero rule**: a chain-rule term is a local partial times an incoming adjoint (reverse) or
+   tangent (forward), and if either factor is exactly 0 the term is 0, even when the other is
+   infinite or `NaN`. Both modes apply it (`sweep` in tape.ts, `times` in forward.ts), so they
+   agree except where cancellation or under/overflow distinguishes their groupings
+   (`test/zero-rule.test.ts`, docs/concepts.md).
 6. **Subgradient conventions are part of the contract** (table in `src/primitives.ts` and the
    README). Changing one is a breaking change.
 7. **No runtime dependencies.** `dependencies` stays empty.
