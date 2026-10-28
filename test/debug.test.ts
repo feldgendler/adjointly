@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from 'vitest';
+import { nextEpoch } from '../src/debug.ts';
 import {
   type Arithmetic,
   type Dual,
@@ -191,4 +192,51 @@ describe('Forward in debug mode', () => {
     F.input(2, 0);
     expect(() => F.mul(x, x)).toThrow(/Forward\.mul: argument 1 is stale/);
   });
+});
+
+test('the full messages say what to do', () => {
+  const t = new Tape({ debug: true });
+  const x = t.input(1);
+  expect(() => t.exp(2 as Var)).toThrow(
+    'Tape.exp: argument 1 is the plain number 2, not a variable of this Tape. Numbers enter ' +
+      'through constant() or input(), or as the number operand of addc(), mulc() and the like. ' +
+      'Do not tell variables from numbers with typeof: both are numbers.',
+  );
+  expect(() => t.constant(x)).toThrow(
+    'Tape.constant: argument 1 is a variable, where a plain number belongs. A variable is a ' +
+      "number at run time, so typeof x === 'number' is true for it too: keep variables and " +
+      'numbers apart instead.',
+  );
+});
+
+test('gradient() sweeps afresh, whatever the last sweep was', () => {
+  const t = new Tape({ debug: true });
+  const [x, y] = t.inputs([2, 3]);
+  const f = t.mul(x, y);
+  const g = t.add(x, y);
+  t.backward(g);
+  expect(Array.from(t.gradient(f, [x, y]))).toEqual([3, 2]);
+});
+
+test('a debug Forward has no rewind() of its own', () => {
+  expect('rewind' in new Forward({ debug: true })).toBe(false);
+  expect(Object.hasOwn(new Tape({ debug: true }), 'rewind')).toBe(true);
+});
+
+test('epochs stay below 2^21 and wrap around to 1', () => {
+  let highest = 0;
+  let wrapped = false;
+  let previous = nextEpoch();
+  for (let i = 0; i < 2 ** 21 + 10; i++) {
+    const e = nextEpoch();
+    highest = Math.max(highest, e);
+    if (e < previous) {
+      wrapped = true;
+      expect(previous).toBe(2 ** 21 - 1);
+      expect(e).toBe(1);
+    }
+    previous = e;
+  }
+  expect(wrapped).toBe(true);
+  expect(highest).toBe(2 ** 21 - 1);
 });

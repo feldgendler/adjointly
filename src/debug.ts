@@ -28,7 +28,7 @@ let lastEpoch = 0;
  * after which numbering wraps around; a stale handle could then be mistaken for a live one only if
  * it were used exactly that many clears later, at the same index.
  */
-function nextEpoch(): number {
+export function nextEpoch(): number {
   lastEpoch = (lastEpoch % (EPOCHS - 1)) + 1;
   return lastEpoch;
 }
@@ -106,7 +106,7 @@ class Handles {
       throw new RangeError(`${where} is a variable of another Tape or Forward`);
     }
     if (
-      index < this.first ||
+      // (A slot below the first is never written, so the epoch test covers it.)
       index >= this.first + this.target.size ||
       this.slotEpoch[index] !== epoch
     ) {
