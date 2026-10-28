@@ -5,6 +5,7 @@
 
 import type { Arithmetic } from './arithmetic.ts';
 import { initialCapacity } from './capacity.ts';
+import { installChecks } from './debug.ts';
 import { primitives as P } from './primitives.ts';
 
 declare const varBrand: unique symbol;
@@ -35,6 +36,28 @@ export interface TapeOptions {
    * reallocations when the size of the computation is known.
    */
   readonly capacity?: number;
+  /**
+   * Check every operand (default `false`). Each method then verifies that its variables are live
+   * variables of this Tape, and throws a `RangeError` naming the method and the argument for a
+   * plain number, a variable from before `clear()` or `rewind()`, or one from another Tape or Forward.
+   * Off, nothing is checked and nothing is slower: a debug Tape is a separate set of methods on
+   * that one instance. Its variables are no longer small integers (they encode which recording
+   * they belong to), which is invisible unless they are used as numbers.
+   *
+   * @example
+   * ```ts
+   * const t = new Tape({ debug: true });
+   * t.input(5);
+   * let caught = '';
+   * try {
+   *   t.exp(1 as Var);
+   * } catch (e) {
+   *   caught = (e as Error).message.split(',')[0]!;
+   * }
+   * caught; //=> 'Tape.exp: argument 1 is the plain number 1'
+   * ```
+   */
+  readonly debug?: boolean;
 }
 
 /**
@@ -91,6 +114,7 @@ export class Tape implements Arithmetic<Var> {
     this.da = new Float64Array(cap);
     this.db = new Float64Array(cap);
     this.adj = new Float64Array(cap);
+    if (options.debug === true) installChecks(this, 'Tape', SINK + 1);
   }
 
   /** The number of nodes recorded so far. */

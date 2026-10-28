@@ -121,6 +121,7 @@ export class Forward implements Arithmetic<Dual> {
 // @public
 export interface ForwardOptions {
     readonly capacity?: number;
+    readonly debug?: boolean;
 }
 
 // @public
@@ -257,6 +258,7 @@ export class Tape implements Arithmetic<Var> {
 // @public
 export interface TapeOptions {
     readonly capacity?: number;
+    readonly debug?: boolean;
 }
 
 // @public

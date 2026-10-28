@@ -4,6 +4,7 @@
 
 import type { Arithmetic } from './arithmetic.ts';
 import { initialCapacity } from './capacity.ts';
+import { installChecks } from './debug.ts';
 import { primitives as P } from './primitives.ts';
 
 declare const dualBrand: unique symbol;
@@ -32,6 +33,28 @@ export interface ForwardOptions {
    * `RangeError`); storage doubles whenever it fills.
    */
   readonly capacity?: number;
+  /**
+   * Check every operand (default `false`). Each method then verifies that its variables are live
+   * variables of this Forward, and throws a `RangeError` naming the method and the argument for a
+   * plain number, a variable from before `clear()`, or one from another Tape or Forward.
+   * Off, nothing is checked and nothing is slower: a debug Forward is a separate set of methods on
+   * that one instance. Its variables are no longer small integers (they encode which recording
+   * they belong to), which is invisible unless they are used as numbers.
+   *
+   * @example
+   * ```ts
+   * const t = new Forward({ debug: true });
+   * t.input(5, 1);
+   * let caught = '';
+   * try {
+   *   t.exp(1 as Dual);
+   * } catch (e) {
+   *   caught = (e as Error).message.split(',')[0]!;
+   * }
+   * caught; //=> 'Forward.exp: argument 1 is the plain number 1'
+   * ```
+   */
+  readonly debug?: boolean;
 }
 
 /**
@@ -69,6 +92,7 @@ export class Forward implements Arithmetic<Dual> {
     const cap = initialCapacity(options.capacity, 'Forward');
     this.val = new Float64Array(cap);
     this.tan = new Float64Array(cap);
+    if (options.debug === true) installChecks(this, 'Forward', 0);
   }
 
   /** The number of values created so far. */
