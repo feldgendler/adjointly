@@ -252,6 +252,12 @@ Apple-silicon laptop with Node 26, relative to evaluating the same function on p
 
 A full gradient costs about two and a half plain evaluations, whatever the number of inputs.
 
+Fixed numbers are worth passing as plain operands. A recurrence of 20 000 steps whose operands are
+mostly fixed coefficients (the `recurrence` workloads) records 300 000 nodes when every number is
+a `constant()` and 200 000 with `mulc`/`subc`. On a GitHub runner its full gradient took 3.2 ms
+instead of 4.3 ms, recording alone 2.6 ms instead of 3.3, and forward mode 2.3 instead of 2.9:
+the same values and gradient, a quarter less time.
+
 ## For AI agents
 
 Rules for writing code that this library differentiates correctly. They are short because each
