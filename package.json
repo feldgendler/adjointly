@@ -1,7 +1,6 @@
 {
   "name": "adjointly",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Dependency-free automatic differentiation for scalar float64 programs in TypeScript: reverse mode on a typed-array tape and forward mode, from one function written once.",
   "keywords": [
     "autodiff",

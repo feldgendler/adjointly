@@ -129,25 +129,18 @@ relative 1e-12; `//=> ~EXPR` loosens that to 1e-6. EXPR may use `Math`'s members
   enums, namespaces or parameter properties.
 - TSDoc on every export, with a contract and an `@example` that the doc tests run.
 - Commits: small and logical, one short line saying what changed. No trailers.
-- User-visible changes get a changeset. The license is MIT (`LICENSE`). The package stays
-  `"private": true` until the owner decides otherwise; the release workflow is inert until then.
-- Versions: `package.json` stays at 0.0.0 until the first release, and the pending first-release
-  changeset is a minor bump, so the first release is 0.1.0. Until 1.0, a breaking change is a
-  minor bump and anything else a patch. `.changeset/config.json` sets
-  `privatePackages.version: true`; without it Changesets ignores a private package and versions
-  nothing.
+- User-visible changes get a changeset. The license is MIT (`LICENSE`). The repository is public
+  and the package is released to npm from 0.1.0.
+- Versions: until 1.0, a breaking change is a minor bump and anything else a patch.
 
 ## Releasing
 
 `.github/workflows/release.yml` runs only when the repository variable `RELEASE_ENABLED` is
-`true`, and refuses to publish while `package.json` is private. Before enabling it:
-
-- Remove `"private": true` (the license, MIT, is already in place).
-- Configure npm trusted publishing (OIDC) for this repository and workflow on npmjs.com; no npm
-  token is stored.
-- **Provenance and private repositories:** npm may refuse provenance attestations for packages
-  published from private GitHub repositories. Either make the repository public first, or check
-  npm's current rules and, if needed, drop `"provenance": true` from `publishConfig`.
+`true`, and refuses to publish while `package.json` is private. It publishes with npm trusted
+publishing (OIDC), which npm allows only for a package that already exists. So the first release,
+0.1.0, is published by hand from the owner's npm login (`npm publish --access public`, without
+provenance); then the trusted publisher (this repository, `release.yml`) is configured on the
+package's page on npmjs.com, and `RELEASE_ENABLED` is set. No npm token is stored.
 
 With pending changesets, the workflow opens a "Version packages" pull request
 (`npm run version-packages`: version bump and CHANGELOG); merging it publishes. That pull request

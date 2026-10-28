@@ -12,17 +12,13 @@ Derivatives are exact to floating-point rounding, not finite-difference approxim
 control flow (loops, branches, early returns) just works. No runtime dependencies, ESM only,
 Node 22 or later (or any modern browser or bundler).
 
-> **Status:** not yet published; the first release will be 0.1.0, and the API may still change
-> before 1.0. **License:** [MIT](LICENSE).
+> **Status:** 0.x: the API may still change before 1.0. **License:** [MIT](LICENSE).
 
 ## Install
 
 ```sh
 npm install adjointly
 ```
-
-The package is not on npm yet; until it is, build it from this repository (`npm ci && npm run
-build`) and depend on the checkout.
 
 ## Quick start
 
