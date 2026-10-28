@@ -4,6 +4,7 @@
  */
 
 import type { Arithmetic } from './arithmetic.ts';
+import { initialCapacity } from './capacity.ts';
 import { primitives as P } from './primitives.ts';
 
 declare const varBrand: unique symbol;
@@ -29,8 +30,9 @@ export type Mark = number & { readonly [markBrand]: 'adjointly.Mark' };
 /** Options for constructing a {@link Tape}. */
 export interface TapeOptions {
   /**
-   * Initial capacity in nodes (default 1024). The tape doubles whenever it fills, so this only
-   * matters to avoid the first few reallocations when the size of the computation is known.
+   * Initial capacity in nodes, a positive integer (default 1024; anything else throws a
+   * `RangeError`). The tape doubles whenever it fills, so this only matters to avoid the first few
+   * reallocations when the size of the computation is known.
    */
   readonly capacity?: number;
 }
@@ -82,7 +84,7 @@ export class Tape implements Arithmetic<Var> {
 
   /** An empty tape; see {@link TapeOptions}. */
   constructor(options: TapeOptions = {}) {
-    const cap = Math.max(1, Math.floor(options.capacity ?? 1024)) + 1; // + the sink
+    const cap = initialCapacity(options.capacity, 'Tape') + 1; // + the sink
     this.val = new Float64Array(cap);
     this.pa = new Int32Array(cap);
     this.pb = new Int32Array(cap);

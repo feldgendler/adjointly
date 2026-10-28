@@ -3,6 +3,7 @@
  */
 
 import type { Arithmetic } from './arithmetic.ts';
+import { initialCapacity } from './capacity.ts';
 import { primitives as P } from './primitives.ts';
 
 declare const dualBrand: unique symbol;
@@ -26,7 +27,10 @@ function times(d: number, t: number): number {
 
 /** Options for constructing a {@link Forward}. */
 export interface ForwardOptions {
-  /** Initial capacity in values (default 1024); storage doubles whenever it fills. */
+  /**
+   * Initial capacity in values, a positive integer (default 1024; anything else throws a
+   * `RangeError`); storage doubles whenever it fills.
+   */
   readonly capacity?: number;
 }
 
@@ -62,7 +66,7 @@ export class Forward implements Arithmetic<Dual> {
 
   /** An empty forward-mode context; see {@link ForwardOptions}. */
   constructor(options: ForwardOptions = {}) {
-    const cap = Math.max(1, Math.floor(options.capacity ?? 1024));
+    const cap = initialCapacity(options.capacity, 'Forward');
     this.val = new Float64Array(cap);
     this.tan = new Float64Array(cap);
   }

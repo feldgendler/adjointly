@@ -8,8 +8,10 @@ describe('construction and growth', () => {
   test('starts empty with the requested capacity', () => {
     expect(new Tape().capacity).toBe(1024);
     expect(new Tape({ capacity: 3 }).capacity).toBe(3);
-    expect(new Tape({ capacity: 2.7 }).capacity).toBe(2);
-    expect(new Tape({ capacity: 0 }).capacity).toBe(1);
+    expect(new Tape({ capacity: 1 }).capacity).toBe(1);
+    for (const capacity of [0, -1, 2.7, NaN, Infinity]) {
+      expect(() => new Tape({ capacity }), String(capacity)).toThrow(RangeError);
+    }
     expect(new Tape().size).toBe(0);
   });
 

@@ -6,7 +6,10 @@ import { expectClose } from './support/util.ts';
 
 test('starts empty with the requested capacity, and grows by doubling', () => {
   expect(new Forward().size).toBe(0);
-  const F = new Forward({ capacity: 0 });
+  for (const capacity of [0, -1, 2.7, NaN, Infinity]) {
+    expect(() => new Forward({ capacity }), String(capacity)).toThrow(RangeError);
+  }
+  const F = new Forward({ capacity: 1 });
   const x = F.input(1.0001, 1);
   let y: Dual = x;
   for (let i = 0; i < 1000; i++) y = F.mul(y, x);
