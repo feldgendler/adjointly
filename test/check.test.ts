@@ -163,6 +163,13 @@ describe('checkGradient', () => {
     expect(one.worst.numeric).toBeNaN();
   });
 
+  test('with zero tolerances and exact zero components, worst still names a component', () => {
+    const r = checkGradient((A) => A.constant(0), [2, 3], { rtol: 0, atol: 0 });
+    expect(r.ok).toBe(true);
+    expect(r.worst.index).toBe(0);
+    expect(r.worst.error).toBe(0);
+  });
+
   test('a function of no inputs passes trivially', () => {
     const r = checkGradient((A) => A.constant(1), []);
     expect(r).toEqual({

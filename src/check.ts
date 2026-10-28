@@ -138,8 +138,9 @@ export function checkGradient(
     const roundoff = differences[i]!.roundoff;
     const error = Math.abs(a - n);
     const allowed = atol + rtol * Math.max(Math.abs(a), Math.abs(n)) + roundoff;
-    // NaN compares false, so a NaN error ranks as infinitely bad and fails.
-    const ratio = Number.isNaN(error) ? Infinity : error / allowed;
+    // A NaN error ranks as infinitely bad (and fails, NaN comparing false); an exact match ranks 0
+    // even against a zero allowance, where 0 / 0 would be NaN.
+    const ratio = Number.isNaN(error) ? Infinity : error === 0 ? 0 : error / allowed;
     if (!(error <= allowed)) ok = false;
     if (ratio > worstRatio) {
       worstRatio = ratio;
