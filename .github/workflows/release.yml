@@ -1,0 +1,55 @@
+name: Release
+
+# Inert while the package is private: the job only runs when the repository variable
+# RELEASE_ENABLED is 'true', and a guard step refuses to go on while package.json says
+# "private": true. To release: decide the license, remove "private", configure npm trusted
+# publishing for this repository and workflow on npmjs.com, then set RELEASE_ENABLED.
+#
+# Publishing uses npm trusted publishing (OIDC): no NPM_TOKEN secret. The id-token permission
+# lets npm exchange the workflow's identity for a short-lived publish credential, and publishes
+# from it carry provenance automatically.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency: release
+
+jobs:
+  release:
+    if: ${{ vars.RELEASE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # version commits and tags
+      pull-requests: write # the "Version packages" pull request
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          # Trusted publishing needs npm 11.5.1 or later, which Node 24 and later ship.
+          node-version: 26
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Refuse to publish a private package
+        run: |
+          if [ "$(node -p "require('./package.json').private === true")" = "true" ]; then
+            echo "::error::package.json is private; remove \"private\" before enabling releases"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run check
+      # With pending changesets this opens or updates a "Version packages" pull request; once that
+      # is merged, it publishes the new version.
+      - uses: changesets/action@v1
+        with:
+          version: npm run version
+          publish: npm run release
+          commit: 'Version packages'
+          title: 'Version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
