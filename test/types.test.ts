@@ -7,7 +7,9 @@ import { expect, expectTypeOf, test } from 'vitest';
 import {
   type Arithmetic,
   type Dual,
+  evaluate,
   Forward,
+  gradient,
   plain,
   type ScalarFunction,
   Tape,
@@ -35,12 +37,27 @@ function typeErrors(): number {
   // @ts-expect-error a number is not a Mark
   t.rewind(0);
 
+  // A literal point types the inputs as a tuple of its length.
+  // @ts-expect-error the point has one input, so there is no y to destructure
+  gradient((A, [x, y]) => A.mul(x, y), [3]);
+  // @ts-expect-error a function of two inputs cannot be evaluated at a point of one
+  evaluate((A: Arithmetic<number>, [x, y]: readonly [number, number]) => A.mul(x, y), [3]);
+
   // Reading values out is fine: a Var is a number underneath.
   return t.value(x) + v;
 }
 
 test('the type errors above are compile-time only', () => {
   expect(typeof typeErrors).toBe('function');
+});
+
+test('a literal point gives tuple-typed inputs, and inputs() a tuple of Vars', () => {
+  expect(gradient((A, [x, y]) => A.mul(x, y), [3, 4]).gradient).toEqual([4, 3]);
+  const [a, b] = new Tape().inputs([1, 2]);
+  expectTypeOf(a).toEqualTypeOf<Var>();
+  expectTypeOf(b).toEqualTypeOf<Var>();
+  expectTypeOf(new Tape().inputs([1, 2] as number[])).toEqualTypeOf<Var[]>();
+  expectTypeOf(new Tape().inputs(new Float64Array(2))).toEqualTypeOf<Var[]>();
 });
 
 test('the three implementations are Arithmetics of their value types', () => {

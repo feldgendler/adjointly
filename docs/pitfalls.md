@@ -28,8 +28,8 @@ constant: the derivative through it is lost.
 import { gradient } from 'adjointly';
 
 // Intends x^2, differentiates as if the second x were a constant.
-gradient((A, [x]) => A.mul(x!, A.constant(A.value(x!))), [3]).gradient; //=> [3]
-gradient((A, [x]) => A.square(x!), [3]).gradient; //=> [6]
+gradient((A, [x]) => A.mul(x, A.constant(A.value(x))), [3]).gradient; //=> [3]
+gradient((A, [x]) => A.square(x), [3]).gradient; //=> [6]
 ```
 
 Use `A.value` for branch conditions, logging, step sizes and results; never for a quantity a
@@ -43,8 +43,8 @@ by convention. Prefer the primitives for kinks.
 ```ts
 import { gradient } from 'adjointly';
 
-gradient((A, [x]) => (A.value(x!) >= 0 ? x! : A.neg(x!)), [0]).gradient; //=> [1]
-gradient((A, [x]) => A.abs(x!), [0]).gradient; //=> [0]
+gradient((A, [x]) => (A.value(x) >= 0 ? x : A.neg(x)), [0]).gradient; //=> [1]
+gradient((A, [x]) => A.abs(x), [0]).gradient; //=> [0]
 ```
 
 A piecewise function that is discontinuous at a boundary has no derivative there, and the one you
@@ -82,9 +82,11 @@ same index. Keep one tape per computation, and do not mix them.
 
 ## `noUncheckedIndexedAccess` and generic accumulators
 
-Under that compiler option `xs[i]` is `T | undefined`, so differentiable code indexes with `!`; and
-`let s = xs[0]!` infers `NonNullable<T>`, which a later `s = A.add(s, ...)` (returning `T`) cannot
-be assigned to. Annotate it: `let s: T = xs[0]!`.
+Under that compiler option `xs[i]` is `T | undefined`. For a fixed number of inputs, type them as a
+tuple (`[x, y]: readonly [T, T]`, or `ScalarFunction<[number, number]>`) and they are plain `T`s;
+`tape.inputs([1, 2])` likewise returns a tuple of `Var`s. For a list of any length, index with `!`;
+and note that `let s = xs[0]!` infers `NonNullable<T>`, which a later `s = A.add(s, ...)` (returning
+`T`) cannot be assigned to. Annotate it: `let s: T = xs[0]!`.
 
 ## Adjoints after the output
 

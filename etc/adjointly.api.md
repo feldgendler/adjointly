@@ -46,7 +46,7 @@ export interface BinaryPrimitive {
 }
 
 // @public
-export function checkGradient(f: ScalarFunction, at: readonly number[], options?: CheckGradientOptions): GradientCheck;
+export function checkGradient<const X extends readonly number[]>(f: ScalarFunction<X>, at: X, options?: CheckGradientOptions): GradientCheck;
 
 // @public
 export interface CheckGradientOptions {
@@ -67,10 +67,10 @@ export type Dual = number & {
 };
 
 // @public
-export function evaluate(f: ScalarFunction, at: readonly number[]): number;
+export function evaluate<const X extends readonly number[]>(f: ScalarFunction<X>, at: X): number;
 
 // @public
-export function finiteDifference(f: ScalarFunction, at: readonly number[], h?: number): number[];
+export function finiteDifference<const X extends readonly number[]>(f: ScalarFunction<X>, at: X, h?: number): number[];
 
 // @public
 export class Forward implements Arithmetic<Dual> {
@@ -110,7 +110,7 @@ export interface ForwardOptions {
 }
 
 // @public
-export function gradient(f: ScalarFunction, at: readonly number[], tape?: Tape): GradientResult;
+export function gradient<const X extends readonly number[]>(f: ScalarFunction<X>, at: X, tape?: Tape): GradientResult;
 
 // @public
 export interface GradientCheck {
@@ -135,7 +135,10 @@ export interface GradientResult {
 }
 
 // @public
-export function jvp(f: ScalarFunction, at: readonly number[], direction: readonly number[], forward?: Forward): JvpResult;
+export type Inputs<T, X extends readonly number[]> = { readonly [K in keyof X]: T; };
+
+// @public
+export function jvp<const X extends readonly number[]>(f: ScalarFunction<X>, at: X, direction: readonly number[], forward?: Forward): JvpResult;
 
 // @public
 export interface JvpResult {
@@ -180,7 +183,7 @@ export const primitives: Readonly<{
 }>;
 
 // @public
-export type ScalarFunction = <T>(A: Arithmetic<T>, xs: readonly T[]) => T;
+export type ScalarFunction<X extends readonly number[] = readonly number[]> = <T>(A: Arithmetic<T>, xs: Inputs<T, X>) => T;
 
 // @public
 export function softmax<T>(A: Arithmetic<T>, xs: readonly T[]): T[];
@@ -205,6 +208,8 @@ export class Tape implements Arithmetic<Var> {
     expm1(a: Var): Var;
     gradient(output: Var, inputs: readonly Var[], out?: Float64Array): Float64Array;
     input(x: number): Var;
+    inputs<const X extends readonly number[]>(xs: X): { -readonly [K in keyof X]: Var; };
+    // (undocumented)
     inputs(xs: ArrayLike<number>): Var[];
     log(a: Var): Var;
     log1p(a: Var): Var;

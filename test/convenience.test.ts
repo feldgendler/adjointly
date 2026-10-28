@@ -51,8 +51,8 @@ describe('evaluate, gradient, jvp', () => {
 
   test('a function of no inputs, and one returning an input unchanged', () => {
     expect(gradient((A) => A.constant(3), [])).toEqual({ value: 3, gradient: [] });
-    expect(gradient((_A, [x]) => x!, [4])).toEqual({ value: 4, gradient: [1] });
-    expect(jvp((_A, [x]) => x!, [4], [2])).toEqual({ value: 4, derivative: 2 });
+    expect(gradient((_A, [x]) => x, [4])).toEqual({ value: 4, gradient: [1] });
+    expect(jvp((_A, [x]) => x, [4], [2])).toEqual({ value: 4, derivative: 2 });
   });
 });
 
@@ -71,7 +71,7 @@ describe('control flow', () => {
     // unlike the abs primitive's 0.
     const hand: ScalarFunction = (A, [x]) => (A.value(x!) >= 0 ? x! : A.neg(x!));
     expect(gradient(hand, [0]).gradient).toEqual([1]);
-    expect(gradient((A, [x]) => A.abs(x!), [0]).gradient).toEqual([0]);
+    expect(gradient((A, [x]) => A.abs(x), [0]).gradient).toEqual([0]);
   });
 
   test('a loop whose trip count depends on values: Newton’s method for sqrt(a)', () => {

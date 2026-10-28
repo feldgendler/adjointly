@@ -9,8 +9,8 @@
  * ```ts
  * import { type Arithmetic, gradient } from 'adjointly';
  *
- * function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
- *   return A.mul(A.sin(x!), A.exp(y!));
+ * function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
+ *   return A.mul(A.sin(x), A.exp(y));
  * }
  * gradient(f, [1, 0]); //=> { value: sin(1), gradient: [cos(1), sin(1)] }
  * ```
@@ -18,7 +18,7 @@
  * @packageDocumentation
  */
 
-export { type Arithmetic, type ScalarFunction, plain } from './arithmetic.ts';
+export { type Arithmetic, type Inputs, type ScalarFunction, plain } from './arithmetic.ts';
 export {
   type BinaryName,
   type BinaryPrimitive,

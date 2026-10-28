@@ -85,10 +85,10 @@ import { type Arithmetic, gradient } from 'adjointly';
 
 // Newton's method for sqrt(a), iterated until it converges. Differentiating through the
 // iterations gives the derivative of the converged result: 1 / (2 sqrt(a)).
-function newtonSqrt<T>(A: Arithmetic<T>, [a]: readonly T[]): T {
+function newtonSqrt<T>(A: Arithmetic<T>, [a]: readonly [T]): T {
   let x = A.constant(1);
   for (;;) {
-    const next = A.mul(A.constant(0.5), A.add(x, A.div(a!, x)));
+    const next = A.mul(A.constant(0.5), A.add(x, A.div(a, x)));
     if (Math.abs(A.value(next) - A.value(x)) < 1e-15) return next;
     x = next;
   }
@@ -112,16 +112,16 @@ does not matter into `NaN`:
 import { type Arithmetic, gradient, jvp } from 'adjointly';
 
 // sqrt at 0 has an infinite derivative, but here it is multiplied by 0.
-function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
-  return A.add(A.mul(A.constant(0), A.sqrt(x!)), y!);
+function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
+  return A.add(A.mul(A.constant(0), A.sqrt(x)), y);
 }
 gradient(f, [0, 1]).gradient; //=> [0, 1]
 jvp(f, [0, 1], [1, 0]).derivative; //=> 0
 jvp(f, [0, 1], [0, 1]).derivative; //=> 1
 
 // The zero comes before the singular point: 0 * x is 0 for every x, so sqrt(0 * x) is constant.
-function g<T>(A: Arithmetic<T>, [x]: readonly T[]): T {
-  return A.sqrt(A.mul(A.constant(0), x!));
+function g<T>(A: Arithmetic<T>, [x]: readonly [T]): T {
+  return A.sqrt(A.mul(A.constant(0), x));
 }
 gradient(g, [1]).gradient; //=> [0]
 jvp(g, [1], [1]).derivative; //=> 0

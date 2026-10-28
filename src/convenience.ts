@@ -2,9 +2,9 @@
  * One-call entry points for a {@link ScalarFunction}: value, gradient, directional derivative.
  */
 
-import { plain, type ScalarFunction } from './arithmetic.ts';
-import { Forward } from './forward.ts';
-import { Tape } from './tape.ts';
+import { type Inputs, plain, type ScalarFunction } from './arithmetic.ts';
+import { type Dual, Forward } from './forward.ts';
+import { Tape, type Var } from './tape.ts';
 
 /** The result of {@link gradient}. */
 export interface GradientResult {
@@ -28,11 +28,11 @@ export interface JvpResult {
  *
  * @example
  * ```ts
- * evaluate((A, [x]) => A.exp(x!), [0]); //=> 1
+ * evaluate((A, [x]) => A.exp(x), [0]); //=> 1
  * ```
  */
-export function evaluate(f: ScalarFunction, at: readonly number[]): number {
-  return f(plain, at);
+export function evaluate<const X extends readonly number[]>(f: ScalarFunction<X>, at: X): number {
+  return f(plain, at as Inputs<number, X>);
 }
 
 /**
@@ -44,17 +44,17 @@ export function evaluate(f: ScalarFunction, at: readonly number[]): number {
  *
  * @example
  * ```ts
- * gradient((A, [x, y]) => A.mul(x!, y!), [3, 4]); //=> { value: 12, gradient: [4, 3] }
+ * gradient((A, [x, y]) => A.mul(x, y), [3, 4]); //=> { value: 12, gradient: [4, 3] }
  * ```
  */
-export function gradient(
-  f: ScalarFunction,
-  at: readonly number[],
+export function gradient<const X extends readonly number[]>(
+  f: ScalarFunction<X>,
+  at: X,
   tape: Tape = new Tape(),
 ): GradientResult {
   tape.clear();
-  const xs = tape.inputs(at);
-  const y = f(tape, xs);
+  const xs: Var[] = tape.inputs(at);
+  const y = f(tape, xs as Inputs<Var, X>);
   tape.backward(y);
   return { value: tape.value(y), gradient: xs.map((x) => tape.adjoint(x)) };
 }
@@ -65,12 +65,12 @@ export function gradient(
  *
  * @example
  * ```ts
- * jvp((A, [x, y]) => A.mul(x!, y!), [3, 4], [1, 0]); //=> { value: 12, derivative: 4 }
+ * jvp((A, [x, y]) => A.mul(x, y), [3, 4], [1, 0]); //=> { value: 12, derivative: 4 }
  * ```
  */
-export function jvp(
-  f: ScalarFunction,
-  at: readonly number[],
+export function jvp<const X extends readonly number[]>(
+  f: ScalarFunction<X>,
+  at: X,
   direction: readonly number[],
   forward: Forward = new Forward(),
 ): JvpResult {
@@ -79,6 +79,6 @@ export function jvp(
   }
   forward.clear();
   const xs = at.map((x, i) => forward.input(x, direction[i]!));
-  const y = f(forward, xs);
+  const y = f(forward, xs as Inputs<Dual, X>);
   return { value: forward.value(y), derivative: forward.tangent(y) };
 }

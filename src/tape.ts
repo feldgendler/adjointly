@@ -154,7 +154,19 @@ export class Tape implements Arithmetic<Var> {
     return this.push(x, SINK, 0, SINK, 0);
   }
 
-  /** Record several independent variables at once; see {@link Tape.input}. */
+  /**
+   * Record several independent variables at once; see {@link Tape.input}. For a tuple of numbers
+   * the result is a tuple of the same length, so it destructures without non-null assertions.
+   *
+   * @example
+   * ```ts
+   * const t = new Tape();
+   * const [x, y] = t.inputs([2, 3]);
+   * t.value(t.mul(x, y)); //=> 6
+   * ```
+   */
+  inputs<const X extends readonly number[]>(xs: X): { -readonly [K in keyof X]: Var };
+  inputs(xs: ArrayLike<number>): Var[];
   inputs(xs: ArrayLike<number>): Var[] {
     return Array.from(xs, (x) => this.push(x, SINK, 0, SINK, 0));
   }
@@ -262,7 +274,7 @@ export class Tape implements Arithmetic<Var> {
    * @example
    * ```ts
    * const t = new Tape();
-   * const [x, y] = t.inputs([1, 2]) as [Var, Var];
+   * const [x, y] = t.inputs([1, 2]);
    * t.gradient(t.mul(x, y), [x, y]); //=> [2, 1]
    * ```
    */

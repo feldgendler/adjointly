@@ -17,9 +17,12 @@ authoritative contract; this page groups them by topic. The committed API report
 
 Every operation on a `T` must go through these methods.
 
-### `type ScalarFunction = <T>(A: Arithmetic<T>, xs: readonly T[]) => T`
+### `type ScalarFunction<X = readonly number[]> = <T>(A: Arithmetic<T>, xs: Inputs<T, X>) => T`
 
-The shape the conveniences accept: a function of a list of inputs, generic in `T`.
+The shape the conveniences accept: a function of a list of inputs, generic in `T`. `X` is the type
+of the point it is evaluated at, and `Inputs<T, X>` maps it to one `T` per number: called with a
+literal point such as `[3, 4]`, the inputs are the tuple `readonly [T, T]` and destructure without
+`!`; with a `number[]` they are `readonly T[]`. `Tape.inputs([1, 2])` returns a tuple the same way.
 
 ### `const plain: Arithmetic<number>`
 
@@ -68,7 +71,7 @@ gradient((A, xs) => logsumexp(A, xs), [0, Math.log(3)]).gradient; //=> [0.25, 0.
 ```ts
 import { evaluate, gradient, jvp, type ScalarFunction } from 'adjointly';
 
-const f: ScalarFunction = (A, [x, y]) => A.div(x!, y!);
+const f: ScalarFunction<[number, number]> = (A, [x, y]) => A.div(x, y);
 evaluate(f, [3, 4]); //=> 0.75
 gradient(f, [3, 4]); //=> { value: 0.75, gradient: [0.25, -3 / 16] }
 jvp(f, [3, 4], [1, 1]); //=> { value: 0.75, derivative: 0.25 - 3 / 16 }
@@ -123,7 +126,7 @@ furthest outside its allowance, with `index`, `analytic`, `numeric`, `error`, `r
 import { checkGradient, type ScalarFunction } from 'adjointly';
 
 // A gradient bug: reading a value out and back in as a constant.
-const buggy: ScalarFunction = (A, [x]) => A.mul(x!, A.constant(A.value(x!)));
+const buggy: ScalarFunction<[number]> = (A, [x]) => A.mul(x, A.constant(A.value(x)));
 const r = checkGradient(buggy, [3]);
 r.ok; //=> false
 r.worst.analytic; //=> 3

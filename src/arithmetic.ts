@@ -26,8 +26,8 @@ import { primitives as P } from './primitives.ts';
  * import { type Arithmetic, plain, gradient } from 'adjointly';
  *
  * // f(x, y) = x * e^y + 3
- * function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
- *   return A.add(A.mul(x!, A.exp(y!)), A.constant(3));
+ * function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
+ *   return A.add(A.mul(x, A.exp(y)), A.constant(3));
  * }
  * f(plain, [2, 0]);   //=> 5
  * gradient(f, [2, 0]); //=> { value: 5, gradient: [1, 2] }
@@ -96,22 +96,33 @@ export interface Arithmetic<T> {
 }
 
 /**
+ * The inputs of a {@link ScalarFunction}: one `T` for each number in the point `X`. For a point
+ * written as a literal, `[3, 4]`, that is the tuple `readonly [T, T]`, so destructured inputs need
+ * no non-null assertions; for a `number[]` it is `readonly T[]`.
+ */
+export type Inputs<T, X extends readonly number[]> = { readonly [K in keyof X]: T };
+
+/**
  * A function of several inputs written once against {@link Arithmetic}, the shape the
  * conveniences ({@link gradient}, {@link jvp}, {@link evaluate}, {@link checkGradient}) accept.
- * The input array has exactly as many elements as the point it is evaluated at.
+ * The input array has exactly as many elements as the point it is evaluated at; `X` is the type of
+ * that point, so `ScalarFunction<[number, number]>` takes two inputs.
  *
  * @example
  * ```ts
- * const rosenbrock: ScalarFunction = (A, [x, y]) =>
+ * const rosenbrock: ScalarFunction<[number, number]> = (A, [x, y]) =>
  *   A.add(
- *     A.square(A.sub(A.constant(1), x!)),
- *     A.mul(A.constant(100), A.square(A.sub(y!, A.square(x!)))),
+ *     A.square(A.sub(A.constant(1), x)),
+ *     A.mul(A.constant(100), A.square(A.sub(y, A.square(x)))),
  *   );
  * evaluate(rosenbrock, [1, 1]); //=> 0
  * gradient(rosenbrock, [0, 0]).gradient; //=> [-2, 0]
  * ```
  */
-export type ScalarFunction = <T>(A: Arithmetic<T>, xs: readonly T[]) => T;
+export type ScalarFunction<X extends readonly number[] = readonly number[]> = <T>(
+  A: Arithmetic<T>,
+  xs: Inputs<T, X>,
+) => T;
 
 /**
  * {@link Arithmetic} on ordinary numbers: computes values only, with nothing recorded. Use it to

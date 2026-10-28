@@ -65,15 +65,15 @@ import { Tape } from 'adjointly';
 
 const t = new Tape();
 const [x, y] = t.inputs([1, 2]);
-const f = t.mul(x!, y!);
-const g = t.add(x!, t.square(y!));
+const f = t.mul(x, y);
+const g = t.add(x, t.square(y));
 
 t.backward(f);
-t.adjoints([x!, y!]); //=> [2, 1]
+t.adjoints([x, y]); //=> [2, 1]
 t.backward(g);
-t.adjoints([x!, y!]); //=> [1, 4]
+t.adjoints([x, y]); //=> [1, 4]
 t.vjp([f, g], [10, 1]); // gradient of 10 f + g
-t.adjoints([x!, y!]); //=> [21, 14]
+t.adjoints([x, y]); //=> [21, 14]
 ```
 
 ## A full Jacobian
@@ -114,8 +114,8 @@ for positive, `sigmoid` for a probability, `exp` for a scale.
 import { type Arithmetic, gradient } from 'adjointly';
 
 // A rate that must stay positive, parametrised by an unconstrained raw value.
-function negLogLikelihood<T>(A: Arithmetic<T>, [raw]: readonly T[]): T {
-  const rate = A.softplus(raw!);
+function negLogLikelihood<T>(A: Arithmetic<T>, [raw]: readonly [T]): T {
+  const rate = A.softplus(raw);
   const waits = [0.5, 1.5, 1.0];
   // exponential distribution: -sum(log(rate) - rate * w)
   let s = A.constant(0);

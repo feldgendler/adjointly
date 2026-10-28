@@ -142,7 +142,7 @@ describe('backward', () => {
 
   test('gradient is backward plus adjoints, into a given buffer', () => {
     const t = new Tape();
-    const [x, y] = t.inputs([2, 5]) as [Var, Var];
+    const [x, y] = t.inputs([2, 5]);
     const out = new Float64Array(2);
     const r = t.gradient(t.div(x, y), [y, x], out);
     expect(r).toBe(out);
@@ -154,7 +154,7 @@ describe('backward', () => {
 describe('vjp', () => {
   test('is the weighted sum of the outputs’ gradients, in one sweep', () => {
     const t = new Tape();
-    const [x, y] = t.inputs([2, 3]) as [Var, Var];
+    const [x, y] = t.inputs([2, 3]);
     const f = t.mul(x, y); // grad (3, 2)
     const g = t.sin(x); // grad (cos 2, 0)
     t.vjp([f, g], [2, -1]);

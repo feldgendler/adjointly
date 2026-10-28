@@ -22,20 +22,20 @@ const smooth: ScalarFunction = (A, xs) =>
 
 describe('finiteDifference', () => {
   test('approximates the gradient by central differences', () => {
-    const g = finiteDifference((A, [x, y]) => A.mul(A.square(x!), y!), [3, -2]);
+    const g = finiteDifference((A, [x, y]) => A.mul(A.square(x), y), [3, -2]);
     expectAllClose(g, [-12, 9], 1e-9);
   });
 
   test('scales the step with the magnitude of each input', () => {
     // At x = 1e8 an absolute step of 6e-6 would be lost to rounding; a relative one is not.
-    const g = finiteDifference((A, [x]) => A.square(x!), [1e8]);
+    const g = finiteDifference((A, [x]) => A.square(x), [1e8]);
     expectAllClose(g, [2e8], 1e-6);
   });
 
   test('uses the given step: a huge step shows the truncation error of a cubic', () => {
     // central difference of x^3 with step h: 3x^2 + h^2
     expectAllClose(
-      finiteDifference((A, [x]) => A.mul(x!, A.square(x!)), [0], 0.5),
+      finiteDifference((A, [x]) => A.mul(x, A.square(x)), [0], 0.5),
       [0.25],
       1e-12,
     );
@@ -150,13 +150,13 @@ describe('checkGradient', () => {
   });
 
   test('a NaN anywhere fails the check and ranks worst', () => {
-    const r = checkGradient((A, [x, y]) => A.add(A.square(x!), A.log(y!)), [2, -1]);
+    const r = checkGradient((A, [x, y]) => A.add(A.square(x), A.log(y)), [2, -1]);
     expect(r.ok).toBe(false);
     // f is NaN everywhere near this point, so even x's numeric derivative is NaN.
     expect(r.numeric.every(Number.isNaN)).toBe(true);
     expect(r.worst.index).toBe(0);
     expect(r.worst.analytic).toBe(4);
-    const one = checkGradient((A, [y]) => A.log(y!), [-1]);
+    const one = checkGradient((A, [y]) => A.log(y), [-1]);
     expect(one.ok).toBe(false);
     expect(one.worst.index).toBe(0);
     expect(one.worst.analytic).toBe(-1);

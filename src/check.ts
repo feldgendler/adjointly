@@ -3,7 +3,7 @@
  * reverse mode.
  */
 
-import { plain, type ScalarFunction } from './arithmetic.ts';
+import { type Inputs, plain, type ScalarFunction } from './arithmetic.ts';
 import { gradient } from './convenience.ts';
 
 /**
@@ -22,12 +22,12 @@ export const DEFAULT_STEP = 6e-6;
  *
  * @example
  * ```ts
- * finiteDifference((A, [x]) => A.square(x!), [3]); //=> ~[6]
+ * finiteDifference((A, [x]) => A.square(x), [3]); //=> ~[6]
  * ```
  */
-export function finiteDifference(
-  f: ScalarFunction,
-  at: readonly number[],
+export function finiteDifference<const X extends readonly number[]>(
+  f: ScalarFunction<X>,
+  at: X,
   h: number = DEFAULT_STEP,
 ): number[] {
   return centralDifferences(f, at, h).map((d) => d.slope);
@@ -40,18 +40,19 @@ const ROUNDING_ULPS = 4;
  * Each component's central difference, and an estimate of the error that rounding in the two
  * evaluations of `f` puts into it: `ROUNDING_ULPS * eps * (|f(x + h)| + |f(x - h)|) / (2 h)`.
  */
-function centralDifferences(
-  f: ScalarFunction,
-  at: readonly number[],
+function centralDifferences<X extends readonly number[]>(
+  f: ScalarFunction<X>,
+  at: X,
   h: number,
 ): { slope: number; roundoff: number }[] {
-  const x = at.slice(); // perturbed one component at a time
+  const x: number[] = at.slice(); // perturbed one component at a time
+  const point = x as unknown as Inputs<number, X>; // the same array, seen as f's inputs
   return at.map((xi, i) => {
     const step = h * Math.max(1, Math.abs(xi));
     x[i] = xi + step;
-    const up = f(plain, x);
+    const up = f(plain, point);
     x[i] = xi - step;
-    const down = f(plain, x);
+    const down = f(plain, point);
     x[i] = xi;
     // Divide by the step actually taken, which rounding may have changed.
     const span = xi + step - (xi - step);
@@ -120,9 +121,9 @@ export interface GradientCheck {
  * r.ok; //=> true
  * ```
  */
-export function checkGradient(
-  f: ScalarFunction,
-  at: readonly number[],
+export function checkGradient<const X extends readonly number[]>(
+  f: ScalarFunction<X>,
+  at: X,
   options: CheckGradientOptions = {},
 ): GradientCheck {
   const { h = DEFAULT_STEP, rtol = 1e-5, atol = 1e-8 } = options;

@@ -15,8 +15,8 @@ Rules for code that this library differentiates:
 ```ts
 import { type Arithmetic, checkGradient, gradient, jvp } from 'adjointly';
 
-function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
-  return A.add(A.mul(x!, y!), A.softplus(x!));
+function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
+  return A.add(A.mul(x, y), A.softplus(x));
 }
 gradient(f, [1, 2]); //=> { value: 2 + log(1 + E), gradient: [2 + 1 / (1 + exp(-1)), 1] }
 jvp(f, [1, 2], [0, 1]); //=> { value: 2 + log(1 + E), derivative: 1 }

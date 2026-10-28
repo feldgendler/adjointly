@@ -29,8 +29,8 @@ build`) and depend on the checkout.
 import { type Arithmetic, evaluate, gradient, jvp } from 'adjointly';
 
 // f(x, y) = sin(x) * e^y, written once against the arithmetic interface
-function f<T>(A: Arithmetic<T>, [x, y]: readonly T[]): T {
-  return A.mul(A.sin(x!), A.exp(y!));
+function f<T>(A: Arithmetic<T>, [x, y]: readonly [T, T]): T {
+  return A.mul(A.sin(x), A.exp(y));
 }
 
 evaluate(f, [1, 0]); //=> sin(1)
@@ -38,7 +38,8 @@ gradient(f, [1, 0]); //=> { value: sin(1), gradient: [cos(1), sin(1)] }
 jvp(f, [1, 0], [1, 1]); //=> { value: sin(1), derivative: cos(1) + sin(1) }
 ```
 
-(The `!`s are only there because this repository compiles with `noUncheckedIndexedAccess`.)
+Typing the inputs as a tuple, `readonly [T, T]`, gives each destructured input the type `T`, even
+under `noUncheckedIndexedAccess`; a point written as a literal (`[1, 0]`) is checked against it.
 
 ## Concepts
 
@@ -78,8 +79,8 @@ The tape records the operations that actually ran, so the derivative is that of 
 ```ts
 import { type Arithmetic, gradient } from 'adjointly';
 
-function hinge<T>(A: Arithmetic<T>, [x]: readonly T[]): T {
-  return A.value(x!) > 1 ? A.constant(0) : A.sub(A.constant(1), x!);
+function hinge<T>(A: Arithmetic<T>, [x]: readonly [T]): T {
+  return A.value(x) > 1 ? A.constant(0) : A.sub(A.constant(1), x);
 }
 gradient(hinge, [0.5]).gradient; //=> [-1]
 gradient(hinge, [2]).gradient; //=> [0]
@@ -102,8 +103,9 @@ Every export is documented in its TSDoc, with an example that is run as a test. 
 - `interface Arithmetic<T>`: `constant(x: number): T`, `value(a: T): number`, and one method per
   primitive: `neg, add, sub, mul, div, recip, square, sqrt, exp, expm1, log, log1p, pow, abs,
 min, max, sin, cos, tanh, sigmoid, softplus`.
-- `type ScalarFunction = <T>(A: Arithmetic<T>, xs: readonly T[]) => T`: what the conveniences
-  take.
+- `type ScalarFunction<X = readonly number[]> = <T>(A: Arithmetic<T>, xs: Inputs<T, X>) => T`:
+  what the conveniences take. `Inputs<T, X>` is one `T` per number of the point `X`: a tuple for a
+  literal point such as `[1, 0]`, `readonly T[]` for a `number[]`.
 - `const plain: Arithmetic<number>`: values only.
 - Composites, generic over any `Arithmetic`: `sum(A, xs)`, `dot(A, xs, ys)`,
   `logsumexp(A, xs)`, `softmax(A, xs): T[]`.
@@ -117,7 +119,7 @@ min, max, sin, cos, tanh, sigmoid, softplus`.
 **Reverse mode: `class Tape implements Arithmetic<Var>`**
 
 - `new Tape({ capacity? })`; `size`, `capacity`
-- `input(x): Var`, `inputs(xs): Var[]`, `constant(x): Var`, `value(v): number`
+- `input(x): Var`, `inputs(xs): Var[]` (a tuple for a literal), `constant(x): Var`, `value(v): number`
 - `backward(output, seed = 1)`, `vjp(outputs, weights)`
 - `adjoint(v): number`, `adjoints(vars, out?): Float64Array`,
   `gradient(output, inputs, out?): Float64Array`
@@ -147,14 +149,14 @@ The full reference, recipes and pitfalls are in [docs/](docs/README.md).
 The conveniences allocate a little per call. In an inner loop, keep one `Tape` and reuse it:
 
 ```ts
-import { Tape, type Var } from 'adjointly';
+import { Tape } from 'adjointly';
 
 const tape = new Tape();
 const out = new Float64Array(2);
 let w: [number, number] = [0, 0];
 for (let step = 0; step < 200; step++) {
   tape.clear();
-  const [a, b] = tape.inputs(w) as [Var, Var];
+  const [a, b] = tape.inputs(w);
   // loss = (a - 3)^2 + (b + 1)^2
   const loss = tape.add(
     tape.square(tape.sub(a, tape.constant(3))),
@@ -277,8 +279,10 @@ one is absolute.
    those made before a `mark()` you rewind to.
 10. **Verify with `checkGradient(f, at)`** at a few random points away from kinks and branch
     boundaries, in a test, whenever you write a nontrivial function.
-11. **Under `noUncheckedIndexedAccess`**, `xs[i]` and destructured `[x, y]` need `!`, and a
-    variable seeded from an index needs an explicit type: `let s: T = xs[0]!`.
+11. **Give a fixed number of inputs a tuple type**, `[x, y]: readonly [T, T]` (or
+    `ScalarFunction<[number, number]>`), so they need no `!` under `noUncheckedIndexedAccess`; with
+    a `readonly T[]` of any length, index with `!` and annotate an accumulator seeded from it:
+    `let s: T = xs[0]!`.
 
 More: [docs/pitfalls.md](docs/pitfalls.md), and [llms.txt](llms.txt) for a compact summary.
 
